@@ -111,6 +111,8 @@ final class Screensaver implements OverlayFactory {
         applyData(plugin.data());
         setDark(plugin.isDark());
         loadStars();
+        if (moonPhoto != null) view.sky.setMoonPhoto(moonPhoto);
+        else loadCachedMoon(context);
         scheduleNextPhoto(0);
         return view;
     }
@@ -283,6 +285,9 @@ final class Screensaver implements OverlayFactory {
     // ----- Night screen: clock tick and NASA moon -----
 
     private String moonLoaded = "", moonLoading = "";
+    private Bitmap moonPhoto;     // the latest NASA image, handed to every new sky view
+    private long moonRetryAt;     // after a failed download, wait until then
+    private static final String MOON_CACHE = "house_tools_moon.jpg";
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -291,7 +296,7 @@ final class Screensaver implements OverlayFactory {
             view.updateClock();
             if (view.nightShown()) {
                 String url = plugin.moonUrl();
-                if (!url.equals(moonLoaded) && !url.equals(moonLoading)) loadMoon(url);
+                if (!url.equals(moonLoaded) && !url.equals(moonLoading) && System.currentTimeMillis() >= moonRetryAt) loadMoon(url);
             }
             plugin.refreshForecast();
             long now = System.currentTimeMillis();
@@ -340,24 +345,56 @@ final class Screensaver implements OverlayFactory {
         });
     }
 
+    /**
+     * Download NASA's moon image for this hour. On success it replaces the current one and is saved on the tablet;
+     * on failure the last image stays (it looks almost the same a few hours later) and we try again in 10 minutes.
+     */
     private void loadMoon(String url) {
         ExecutorService w = worker;
         if (w == null) return;
         moonLoading = url;
+        final java.io.File cache = view == null ? null : new java.io.File(view.getContext().getCacheDir(), MOON_CACHE);
         w.execute(() -> {
             try {
-                Bitmap moon = Net.decode(Net.get(url, 2_000_000), 300, 300, false);
+                byte[] bytes = Net.get(url, 2_000_000);
+                Bitmap moon = Net.decode(bytes, 300, 300, false);
+                if (moon == null) throw new java.io.IOException("not an image");
+                if (cache != null) {
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(cache)) { out.write(bytes); }
+                    catch (Throwable ignored) {}
+                }
                 main.post(() -> {
                     moonLoading = "";
-                    if (moon == null || view == null) return;
                     moonLoaded = url;
-                    view.sky.setMoonPhoto(moon);
+                    moonPhoto = moon;
+                    if (view != null) view.sky.setMoonPhoto(moon);
                 });
             } catch (Throwable error) {
-                main.post(() -> moonLoading = "");
-                moonLoaded = url; // don't retry this hour; the drawn moon shows instead
-                plugin.log("Moon image: " + error.getMessage());
+                main.post(() -> {
+                    moonLoading = "";
+                    moonRetryAt = System.currentTimeMillis() + 10 * 60_000L;
+                });
+                plugin.log("Moon image: " + error.getMessage() + " (keeping the last one)");
             }
+        });
+    }
+
+    /** After a restart: the last saved image, until the new hour's one arrives. */
+    private void loadCachedMoon(Context context) {
+        ExecutorService w = worker;
+        if (w == null) return;
+        final java.io.File cache = new java.io.File(context.getCacheDir(), MOON_CACHE);
+        w.execute(() -> {
+            try {
+                if (!cache.exists()) return;
+                Bitmap moon = android.graphics.BitmapFactory.decodeFile(cache.getPath());
+                if (moon == null) return;
+                main.post(() -> {
+                    if (moonPhoto != null) return; // a fresh one already arrived
+                    moonPhoto = moon;
+                    if (view != null) view.sky.setMoonPhoto(moon);
+                });
+            } catch (Throwable ignored) {}
         });
     }
 
