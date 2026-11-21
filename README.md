@@ -86,8 +86,8 @@ House Tools can draw Kiosk Satellite's voice overlay in its own look. Pick **Hou
 
 It follows the Appearance settings Background, Text size and Reactive activity bar. The palette always matches the logo. Touches pass through, so a double tap still dismisses the turn.
 
-| Setting            | Default | Meaning                                       |
-| ------------------ | ------- | --------------------------------------------- |
+| Setting            | Default | Meaning                                            |
+| ------------------ | ------- | -------------------------------------------------- |
 | Name over the logo | empty   | Small capitals above the logo, such as a home name |
 
 ## Home Assistant entities (through Kiosk Satellite's ESPHome connection)

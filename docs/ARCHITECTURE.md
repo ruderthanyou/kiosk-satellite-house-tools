@@ -4,19 +4,19 @@ House Tools is a Kiosk Satellite plugin: Java code that Kiosk Satellite loads in
 
 ## Files
 
-| File                            | What it does                                                                                                             |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `kiosk-satellite-plugin.json`   | The manifest: name, version, capabilities, settings and commands                                                         |
-| `src/.../HouseToolsPlugin.java` | Entry point. Settings, Home Assistant data, which screensaver shows, auto-close, touch tracking, Home Assistant entities |
+| File                            | What it does                                                                                                                                         |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kiosk-satellite-plugin.json`   | The manifest: name, version, capabilities, settings and commands                                                                                     |
+| `src/.../HouseToolsPlugin.java` | Entry point. Settings, Home Assistant data, which screensaver shows, auto-close, touch tracking, Home Assistant entities                             |
 | `src/.../VoiceSkin.java`        | The voice skin: follows `voice.skin`, then `voice.overlay`/`level`/`text`/`appearance` while picked; full screen and docked looks, the animated logo |
-| `src/.../Screensaver.java`      | The screensaver view: photo screen and night screen, taps, chips, corners                                                |
-| `src/.../SkyView.java`          | The animated sky: colors, stars, moon, sun, clouds, rain, snow, lightning                                                |
-| `src/.../AlertBanner.java`      | The alert bar at the top of the screen                                                                                   |
-| `src/.../Net.java`              | HTTP downloads, image decoding and JSON helpers                                                                          |
-| `assets/stars.csv`              | The bright-star catalog                                                                                                  |
-| `assets/icon.png`               | The plugin icon                                                                                                          |
-| `sdk/`                          | Kiosk Satellite's plugin SDK, compile-time only, never packaged                                                          |
-| `tools/`                        | Build scripts from the Kiosk Satellite plugin template                                                                   |
+| `src/.../Screensaver.java`      | The screensaver view: photo screen and night screen, taps, chips, corners                                                                            |
+| `src/.../SkyView.java`          | The animated sky: colors, stars, moon, sun, clouds, rain, snow, lightning                                                                            |
+| `src/.../AlertBanner.java`      | The alert bar at the top of the screen                                                                                                               |
+| `src/.../Net.java`              | HTTP downloads, image decoding and JSON helpers                                                                                                      |
+| `assets/stars.csv`              | The bright-star catalog                                                                                                                              |
+| `assets/icon.png`               | The plugin icon                                                                                                                                      |
+| `sdk/`                          | Kiosk Satellite's plugin SDK, compile-time only, never packaged                                                                                      |
+| `tools/`                        | Build scripts from the Kiosk Satellite plugin template                                                                                               |
 
 ## Data flow
 

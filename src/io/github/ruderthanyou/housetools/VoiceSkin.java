@@ -89,9 +89,8 @@ final class VoiceSkin {
                     if (current != generation || !ok || !(data instanceof Map)) return;
                     Map<?, ?> state = (Map<?, ?>) data;
                     if (!skinHeard) selected = Boolean.TRUE.equals(state.get("skinSelected"));
-                    if ("hidden".equals(overlay) && state.get("overlay") instanceof String) overlay = (String) state.get(
-                        "overlay"
-                    );
+                    if ("hidden".equals(overlay) && state.get("overlay") instanceof String) overlay =
+                        (String) state.get("overlay");
                     follow();
                     update();
                 }
@@ -163,9 +162,7 @@ final class VoiceSkin {
         background = settings.get("background") instanceof Number
             ? ((Number) settings.get("background")).floatValue()
             : null;
-        textScale = settings.get("textScale") instanceof Number
-            ? ((Number) settings.get("textScale")).floatValue()
-            : 1;
+        textScale = settings.get("textScale") instanceof Number ? ((Number) settings.get("textScale")).floatValue() : 1;
         reactive = !Boolean.FALSE.equals(settings.get("reactive"));
         final SkinView current = view;
         if (current != null) current.post(current::restyle);
@@ -195,9 +192,7 @@ final class VoiceSkin {
                 return;
             }
             boolean docked = "docked".equals(want);
-            OverlaySpec spec = docked
-                ? OverlaySpec.at(OverlaySpec.BOTTOM).inset(24)
-                : OverlaySpec.fullScreen();
+            OverlaySpec spec = docked ? OverlaySpec.at(OverlaySpec.BOTTOM).inset(24) : OverlaySpec.fullScreen();
             spec = spec.onTop(true).touchable(false).closeOnBack(false);
             try {
                 spec = spec
@@ -307,7 +302,10 @@ final class VoiceSkin {
                 column.setGravity(Gravity.CENTER);
                 title.setGravity(Gravity.CENTER);
                 title.setLetterSpacing(0.32f);
-                column.addView(title, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+                column.addView(
+                    title,
+                    new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                );
                 int size = Math.round(Math.min(screenW, screenH) * 0.46f);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
                 lp.topMargin = theme.px(8);
@@ -482,7 +480,7 @@ final class VoiceSkin {
             float unit = Math.min(cx, cy); // the logo box is [-unit, unit]
             boolean thinking = !command.isEmpty() && answer.isEmpty() && tool.isEmpty();
             thinkingFade += ((thinking ? 1f : 0f) - thinkingFade) * 0.08f;
-            double breath = 0.5 - 0.5 * Math.cos((now % 3200) / 3200.0 * Math.PI * 2);
+            double breath = 0.5 - 0.5 * Math.cos(((now % 3200) / 3200.0) * Math.PI * 2);
 
             // Ripples: one for each surge of the voice, and a slow one at rest.
             if (shown > 0.12f && now - lastRipple > 260) {
@@ -509,7 +507,9 @@ final class VoiceSkin {
 
             // A soft glow behind the house that swells with the voice.
             float haloR = unit * (0.62f + 0.06f * (float) breath + 0.25f * shown + 0.1f * thinkingFade);
-            halo.setAlpha(Math.round(255 * Math.min(1f, 0.55f + 0.8f * shown + 0.3f * thinkingFade) * ease(age / 600f)));
+            halo.setAlpha(
+                Math.round(255 * Math.min(1f, 0.55f + 0.8f * shown + 0.3f * thinkingFade) * ease(age / 600f))
+            );
             canvas.save();
             canvas.translate(cx, cy);
             canvas.scale(haloR, haloR);
@@ -519,7 +519,7 @@ final class VoiceSkin {
             // Thinking: a comet circles the house, sky blue fading into an amber tail.
             if (thinkingFade > 0.02f) {
                 float orbit = unit * 0.82f;
-                double head = (now % 1500) / 1500.0 * 360.0;
+                double head = ((now % 1500) / 1500.0) * 360.0;
                 comet.setStrokeWidth(unit * (small ? 0.07f : 0.045f));
                 int steps = 18;
                 for (int i = steps; i >= 0; i--) {
