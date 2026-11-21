@@ -85,6 +85,7 @@ final class Screensaver implements OverlayFactory {
         worker = Executors.newSingleThreadExecutor();
         applyData(plugin.data());
         setDark(plugin.isDark());
+        loadStars();
         scheduleNextPhoto(0);
         return view;
     }
@@ -219,6 +220,8 @@ final class Screensaver implements OverlayFactory {
         view.setStatus(Net.str(data.get("garage")), Net.str(data.get("alarm")), Net.list(data.get("alerts")), Net.map(data.get("climate")));
         view.setLights(Net.str(data.get("area")), Net.list(data.get("lights")));
         Object sun = data.get("sun");
+        Object lat = data.get("lat"), lon = data.get("lon");
+        if (lat instanceof Number && lon instanceof Number) view.sky.setLocation(((Number) lat).doubleValue(), ((Number) lon).doubleValue());
         Object azimuth = data.get("sun_az");
         if (azimuth instanceof Number) view.sky.setSunAzimuth(((Number) azimuth).doubleValue());
         view.setWeather(Net.map(data.get("weather")), sun instanceof Number ? ((Number) sun).doubleValue() : -30);
@@ -241,6 +244,31 @@ final class Screensaver implements OverlayFactory {
             main.postDelayed(this, 1000 - now % 1000 + 20);
         }
     };
+
+    private static float[][] stars; // loaded once from assets/stars.csv
+
+    private void loadStars() {
+        if (stars != null) { view.sky.setStars(stars[0], stars[1], stars[2], stars[3]); return; }
+        ExecutorService w = worker;
+        if (w == null) return;
+        w.execute(() -> {
+            try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(plugin.openAsset("stars.csv"), "UTF-8"))) {
+                List<float[]> rows = new ArrayList<>();
+                String line;
+                while ((line = in.readLine()) != null) {
+                    if (line.startsWith("#") || line.trim().isEmpty()) continue;
+                    String[] f = line.split(",");
+                    rows.add(new float[] {Float.parseFloat(f[0]), Float.parseFloat(f[1]), Float.parseFloat(f[2]), Float.parseFloat(f[3])});
+                }
+                float[][] cat = new float[4][rows.size()];
+                for (int i = 0; i < rows.size(); i++) for (int k = 0; k < 4; k++) cat[k][i] = rows.get(i)[k];
+                stars = cat;
+                main.post(() -> { if (view != null) view.sky.setStars(cat[0], cat[1], cat[2], cat[3]); });
+            } catch (Throwable error) {
+                plugin.log("Stars: " + error);
+            }
+        });
+    }
 
     private void loadMoon(String url) {
         ExecutorService w = worker;

@@ -36,9 +36,11 @@ The room's temperature and humidity come from a temperature (and humidity) senso
 
 ## Sky screensaver (dark room)
 
-With **Use the sky screensaver in a dark room** on, a dark room shows an animated sky instead of the tablet's own screensaver: night, dusk, golden hour or day colors from the sun's height; stars on clear nights; layered clouds, rain, snow and lightning from the current weather; the sun where it really is; and the real moon, from NASA's hourly images ([Moon Phase and Libration, 2026](https://svs.gsfc.nasa.gov/5587)), south-up below the equator. A big clock and date sit in the middle, with weather buttons along the bottom.
+With **Use the sky screensaver in a dark room** on, a dark room shows an animated sky instead of the tablet's own screensaver: night, dusk, golden hour or day colors from the sun's height; the real stars above your horizon right now (about 1,000 brightest, sized by brightness and tinted by color), seen looking toward the equator; layered clouds, rain, snow and lightning from the current weather; the sun where it really is; and the real moon, from NASA's hourly images ([Moon Phase and Libration, 2026](https://svs.gsfc.nasa.gov/5587)), south-up below the equator. A big clock and date sit in the middle, with weather buttons along the bottom.
 
-No location is stored in the plugin: the sun comes from Home Assistant's `sun.sun`, the weather from the chosen weather entity, and the hemisphere from `zone.home`.
+No location is stored in the plugin: the sun comes from Home Assistant's `sun.sun`, the weather from the chosen weather entity, and the latitude and longitude for the stars, the moon's position and the hemisphere from `zone.home`. The moon is drawn where it really is, and only while it's up.
+
+Star data: the Yale Bright Star Catalog, 5th revised edition (Hoffleit & Warren, 1991), stars to magnitude 4.6, in `assets/stars.csv`.
 
 ## Alert banner
 

@@ -419,7 +419,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
             + " 'garage': states(garage) if garage else '', 'alarm': states(alarm) if alarm else '',"
             + " 'alerts': (items if items is list else []), 'lights': ns.l, 'weather': weather,"
             + " 'sun': state_attr('sun.sun','elevation'), 'sun_az': state_attr('sun.sun','azimuth'),"
-            + " 'lat': state_attr('zone.home','latitude')} | to_json }}";
+            + " 'lat': state_attr('zone.home','latitude'), 'lon': state_attr('zone.home','longitude')} | to_json }}";
         Map<String, Object> message = new HashMap<>();
         message.put("type", "render_template");
         message.put("template", template);
@@ -442,6 +442,12 @@ public final class HouseToolsPlugin implements KioskPlugin {
     String haUrl() { return haUrlSetting.isEmpty() ? ksHaUrl : haUrlSetting; }
     String photoIndexPath() { return photoIndexPath; }
     boolean nightScreensaver() { return nightScreensaver; }
+
+    java.io.InputStream openAsset(String name) throws java.io.IOException {
+        PluginHost h = host();
+        if (h == null) throw new java.io.IOException("Plugin stopped");
+        return h.openAsset(name);
+    }
     Double forecastHigh() { return forecastHigh; }
     Double forecastLow() { return forecastLow; }
 

@@ -39,6 +39,16 @@ final class SkyView extends View {
     private final int[] dropLayer = new int[DROPS];
     private double windSpeed;
     private double sunAzimuth = 180;
+
+    // Real sky: bright-star catalog (RA, Dec in degrees, V magnitude, B-V color) and Home Assistant's home location.
+    private float[] catRa, catDec, catMag, catBv;
+    private double lat = Double.NaN, lon = Double.NaN;
+    private float[] realX = new float[0], realY = new float[0], realR = new float[0];
+    private int[] realColor = new int[0];
+    private int realCount;
+    private long realAt;
+    private int realW, realH;
+    private float moonViewX = Float.NaN, moonViewY = Float.NaN; // moon's real place on screen, NaN = not up
     private long nextFlash, flashUntil;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Random random = new Random(7);
@@ -76,6 +86,85 @@ final class SkyView extends View {
     void setMoonPhoto(Bitmap photo) { moonPhoto = photo; invalidate(); }
 
     void setWind(double speed) { windSpeed = speed; }
+
+    void setStars(float[] ra, float[] dec, float[] mag, float[] bv) {
+        catRa = ra; catDec = dec; catMag = mag; catBv = bv; realAt = 0; invalidate();
+    }
+
+    void setLocation(double latitude, double longitude) {
+        if (latitude == lat && longitude == lon) return;
+        lat = latitude; lon = longitude; realAt = 0; invalidate();
+    }
+
+    private boolean real() { return catRa != null && !Double.isNaN(lat) && !Double.isNaN(lon); }
+
+    /**
+     * Where each star (and the moon) is right now, seen looking toward the equator (south in the northern
+     * hemisphere): east on the left, west on the right, horizon near the bottom, about 75 degrees up at the top.
+     * Recomputed every 30 seconds; the sky turns about a quarter of a degree in that time.
+     */
+    private void computeReal(int w, int h) {
+        long now = System.currentTimeMillis();
+        if (realAt != 0 && now - realAt < 30_000 && w == realW && h == realH) return;
+        realAt = now; realW = w; realH = h;
+        double jd = now / 86400000.0 + 2440587.5, d = jd - 2451545.0;
+        double lst = Math.toRadians(norm(280.46061837 + 360.98564736629 * d + lon));
+        double phi = Math.toRadians(lat);
+        boolean south = lat < 0;
+        int n = catRa.length;
+        if (realX.length != n) { realX = new float[n]; realY = new float[n]; realR = new float[n]; realColor = new int[n]; }
+        realCount = 0;
+        for (int i = 0; i < n; i++) {
+            float[] xy = project(Math.toRadians(catRa[i]), Math.toRadians(catDec[i]), lst, phi, south, w, h);
+            if (xy == null) continue;
+            realX[realCount] = xy[0];
+            realY[realCount] = xy[1];
+            float mag = catMag[i];
+            realR[realCount] = Math.max(0.45f, Math.min(3.2f, 2.5f - 0.42f * mag)) * density;
+            realColor[realCount] = starColor(catBv[i], mag);
+            realCount++;
+        }
+        // The moon (low-precision position, good to about a degree).
+        double L = Math.toRadians(norm(218.316 + 13.176396 * d)), M = Math.toRadians(norm(134.963 + 13.064993 * d));
+        double F = Math.toRadians(norm(93.272 + 13.229350 * d));
+        double lambda = L + Math.toRadians(6.289) * Math.sin(M), beta = Math.toRadians(5.128) * Math.sin(F);
+        double eps = Math.toRadians(23.439);
+        double ra = Math.atan2(Math.sin(lambda) * Math.cos(eps) - Math.tan(beta) * Math.sin(eps), Math.cos(lambda));
+        double dec = Math.asin(Math.sin(beta) * Math.cos(eps) + Math.cos(beta) * Math.sin(eps) * Math.sin(lambda));
+        float[] m = project(ra, dec, lst, phi, south, w, h);
+        if (m == null) { moonViewX = Float.NaN; moonViewY = Float.NaN; }
+        else {
+            float margin = 50 * density; // a moon off to the north side sits at the edge instead of vanishing
+            moonViewX = Math.max(margin, Math.min(w - margin, m[0]));
+            moonViewY = Math.max(margin, m[1]);
+        }
+    }
+
+    /** Screen position for a sky position, or null below the horizon. */
+    private static float[] project(double ra, double dec, double lst, double phi, boolean south, int w, int h) {
+        double ha = lst - ra;
+        double sinAlt = Math.sin(dec) * Math.sin(phi) + Math.cos(dec) * Math.cos(phi) * Math.cos(ha);
+        double alt = Math.asin(sinAlt);
+        if (alt < 0) return null;
+        // Azimuth measured from south, west positive.
+        double az = Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
+        if (south) az = az > 0 ? az - Math.PI : az + Math.PI; // southern hemisphere: look north
+        double fx = (az + Math.PI / 2) / Math.PI;               // -90 (east) .. +90 (west) -> 0..1
+        if (fx < -0.05 || fx > 1.05) return null;              // behind the viewer
+        double fy = 1 - Math.toDegrees(alt) / 75.0;            // horizon at the bottom, 75 degrees at the top
+        return new float[] {(float) (fx * w), (float) (fy * h * 0.92)};
+    }
+
+    private static double norm(double deg) { deg %= 360; return deg < 0 ? deg + 360 : deg; }
+
+    /** Blue-white hot stars to orange cool ones, from the B-V color index; fainter stars dimmer. */
+    private static int starColor(float bv, float mag) {
+        int c;
+        if (bv < 0) c = 0xCFDBFF; else if (bv < 0.4) c = 0xF2F4FF; else if (bv < 0.8) c = 0xFFF6E5;
+        else if (bv < 1.3) c = 0xFFDDB0; else c = 0xFFC08A;
+        int a = (int) Math.max(110, Math.min(255, 255 - (mag - 1) * 32));
+        return (a << 24) | c;
+    }
     void setSunAzimuth(double azimuth) { sunAzimuth = azimuth; }
 
     void setWeather(String condition, double sunElevation, double cloudCover) {
@@ -120,8 +209,19 @@ final class SkyView extends View {
         paint.setShader(null);
 
         // Stars on clear nights, twinkling. None where the moon is: it blocks them, dark side included.
-        float moonX = w * 0.84f, moonY = h * 0.22f, moonR = 34 * density * 1.08f;
-        if (night && !cloudy()) {
+        if (real()) computeReal(w, h);
+        boolean moonUp = !real() || !Float.isNaN(moonViewX);
+        float moonX = real() ? moonViewX : w * 0.84f, moonY = real() ? moonViewY : h * 0.22f, moonR = 34 * density * 1.08f;
+        if (night && !cloudy() && real()) {
+            for (int i = 0; i < realCount; i++) {
+                float dx = realX[i] - moonX, dy = realY[i] - moonY;
+                if (moonUp && dx * dx + dy * dy < moonR * moonR) continue;
+                int color = realColor[i];
+                float tw = 0.75f + 0.25f * (float) Math.sin(t * (0.7 + (i % 7) * 0.2) + i);
+                paint.setColor(((int) (((color >>> 24) & 255) * tw) << 24) | (color & 0xFFFFFF));
+                canvas.drawCircle(realX[i], realY[i], realR[i], paint);
+            }
+        } else if (night && !cloudy()) {
             for (int i = 0; i < STARS; i++) {
                 float dx = sx[i] * w - moonX, dy = sy[i] * h - moonY;
                 if (dx * dx + dy * dy < moonR * moonR) continue;
@@ -135,8 +235,8 @@ final class SkyView extends View {
         paint.setColor(0xFFFFFFFF);
         paint.setAlpha(255);
         paint.setColorFilter(null);
-        float mx = w * 0.84f, my = h * 0.22f, mr = 34 * density;
-        if (night) drawMoon(canvas, mx, my, mr);
+        float mx = moonX, my = moonY, mr = 34 * density;
+        if (night && moonUp) drawMoon(canvas, mx, my, mr);
         else if (sunElevation > -4) {
             // Where the sun really is: east (left) to west (right) by azimuth, height by elevation.
             float sxp = (float) (0.08 + 0.84 * Math.max(0, Math.min(1, (sunAzimuth - 90) / 180.0))) * w;
