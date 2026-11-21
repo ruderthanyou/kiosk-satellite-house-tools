@@ -13,7 +13,9 @@ jobs:
         with:
           node-version: '20'
       - name: Prettier
-        run: npx --yes --package prettier@3.3.3 --package prettier-plugin-java@2.6.4 prettier --write .
+        run: |
+          npm install --no-save --no-package-lock prettier@3.3.3 prettier-plugin-java@2.6.4
+          npx prettier --write .
       - name: Commit formatting changes
         run: |
           if git diff --quiet; then echo "Already formatted"; exit 0; fi

@@ -3,3 +3,4 @@ tools/
 dist/
 assets/
 LICENSE
+node_modules/
