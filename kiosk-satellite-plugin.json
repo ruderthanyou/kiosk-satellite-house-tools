@@ -163,10 +163,10 @@
     {
       "key": "moonFrames",
       "type": "string",
-      "title": "Moon images",
-      "default": "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg",
+      "title": "Moon images (optional)",
+      "default": "",
       "group": "Screensaver",
-      "description": "NASA's hourly moon images for this year ({frame} = hour of the year, from 1). Update the address each January. Without it, a drawn moon with the right phase shows."
+      "description": "Leave empty to use NASA's hourly moon images for 2026, north-up or south-up from Home Assistant's home location. Each year NASA publishes a new set; put its address here with {frame} for the hour of the year (from 1). Without images, a drawn moon with the right phase shows."
     },
     {
       "key": "haUrl",

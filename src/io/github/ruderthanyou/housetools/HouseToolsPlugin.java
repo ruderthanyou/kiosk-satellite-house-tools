@@ -73,7 +73,9 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile String photoIndexPath = "/local/screensaver/photo_index.json";
     private volatile boolean nightScreensaver;
     private volatile String weatherEntity = "";
-    private volatile String moonFrames = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg";
+    private static final String MOON_NORTH = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg";
+    private static final String MOON_SOUTH = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005588/frames/730x730_1x1_30p/moon.{frame}.jpg";
+    private volatile String moonFrames = ""; // empty = NASA's 2026 images, north-up or south-up by Home Assistant's home latitude
     private volatile Double forecastHigh, forecastLow;
     private long forecastAt;
     private String publishedName;
@@ -337,7 +339,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
         Object night = settings.get("nightScreensaver");
         if (night instanceof Boolean) nightScreensaver = (Boolean) night;
         weatherEntity = entity(settings.get("weatherEntity"));
-        moonFrames = text(settings.get("moonFrames"), moonFrames);
+        moonFrames = text(settings.get("moonFrames"), "");
         photoSeconds = (int) clamp(settings.get("photoSeconds"), 10, 600, photoSeconds);
         photoBlock = (int) clamp(settings.get("photoBlock"), 1, 50, photoBlock);
         nightLux = clamp(settings.get("nightLux"), 0, 50, nightLux);
@@ -405,7 +407,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
             + "{{ {'area': (area_name(area) if area else '') or '', 'climate': clim, 'people': ns.p,"
             + " 'garage': states(garage) if garage else '', 'alarm': states(alarm) if alarm else '',"
             + " 'alerts': (items if items is list else []), 'lights': ns.l, 'weather': weather,"
-            + " 'sun': state_attr('sun.sun','elevation'), 'sun_az': state_attr('sun.sun','azimuth')} | to_json }}";
+            + " 'sun': state_attr('sun.sun','elevation'), 'sun_az': state_attr('sun.sun','azimuth'),"
+            + " 'lat': state_attr('zone.home','latitude')} | to_json }}";
         Map<String, Object> message = new HashMap<>();
         message.put("type", "render_template");
         message.put("template", template);
@@ -435,7 +438,12 @@ public final class HouseToolsPlugin implements KioskPlugin {
     String moonUrl() {
         java.util.Calendar utc = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
         int frame = (utc.get(java.util.Calendar.DAY_OF_YEAR) - 1) * 24 + utc.get(java.util.Calendar.HOUR_OF_DAY) + 1;
-        return moonFrames.replace("{frame}", String.format(java.util.Locale.US, "%04d", frame));
+        String pattern = moonFrames;
+        if (pattern.isEmpty()) {
+            Object lat = houseData.get("lat"); // Home Assistant's home location (zone.home)
+            pattern = lat instanceof Number && ((Number) lat).doubleValue() < 0 ? MOON_SOUTH : MOON_NORTH;
+        }
+        return pattern.replace("{frame}", String.format(java.util.Locale.US, "%04d", frame));
     }
 
     /** Today's high and low, refreshed every 30 minutes while the night screensaver is used. */

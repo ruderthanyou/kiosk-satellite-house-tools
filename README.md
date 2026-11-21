@@ -28,6 +28,15 @@ The room's temperature and humidity come from a sensor in the room's area whose 
 | Photos in a row | 1 | 1 = every photo at random. More = that many from one random spot |
 | Dark room below | 2 lx | Below this, the tablet's own screensaver shows |
 | Home Assistant address (optional) | empty | Leave empty to use Kiosk Satellite's |
+| Use the sky screensaver in a dark room | Off | See below |
+| Weather | empty | Weather entity for the sky screensaver |
+| Moon images (optional) | empty | Another year's NASA image address |
+
+## Sky screensaver (dark room)
+
+With **Use the sky screensaver in a dark room** on, a dark room shows an animated sky instead of the tablet's own screensaver: night, dusk, golden hour or day colors from the sun's height; stars on clear nights; layered clouds, rain, snow and lightning from the current weather; the sun where it really is; and the real moon, from NASA's hourly images ([Moon Phase and Libration, 2026](https://svs.gsfc.nasa.gov/5587)), south-up below the equator. A big clock and date sit in the middle, with weather buttons along the bottom.
+
+No location is stored in the plugin: the sun comes from Home Assistant's `sun.sun`, the weather from the chosen weather entity, and the hemisphere from `zone.home`.
 
 ## Alert banner
 
