@@ -285,8 +285,8 @@ final class Screensaver implements OverlayFactory {
     // ----- Night screen: clock tick and NASA moon -----
 
     private String moonLoaded = "", moonLoading = "";
-    private Bitmap moonPhoto;     // the latest NASA image, handed to every new sky view
-    private long moonRetryAt;     // after a failed download, wait until then
+    private Bitmap moonPhoto; // the latest NASA image, handed to every new sky view
+    private long moonRetryAt; // after a failed download, wait until then
     private static final String MOON_CACHE = "house_tools_moon.jpg";
 
     private final Runnable tick = new Runnable() {
@@ -296,7 +296,9 @@ final class Screensaver implements OverlayFactory {
             view.updateClock();
             if (view.nightShown()) {
                 String url = plugin.moonUrl();
-                if (!url.equals(moonLoaded) && !url.equals(moonLoading) && System.currentTimeMillis() >= moonRetryAt) loadMoon(url);
+                if (
+                    !url.equals(moonLoaded) && !url.equals(moonLoading) && System.currentTimeMillis() >= moonRetryAt
+                ) loadMoon(url);
             }
             plugin.refreshForecast();
             long now = System.currentTimeMillis();
@@ -360,8 +362,9 @@ final class Screensaver implements OverlayFactory {
                 Bitmap moon = Net.decode(bytes, 300, 300, false);
                 if (moon == null) throw new java.io.IOException("not an image");
                 if (cache != null) {
-                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(cache)) { out.write(bytes); }
-                    catch (Throwable ignored) {}
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(cache)) {
+                        out.write(bytes);
+                    } catch (Throwable ignored) {}
                 }
                 main.post(() -> {
                     moonLoading = "";
