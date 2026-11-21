@@ -4,18 +4,18 @@ House Tools is a Kiosk Satellite plugin: Java code that Kiosk Satellite loads in
 
 ## Files
 
-| File | What it does |
-| --- | --- |
-| `kiosk-satellite-plugin.json` | The manifest: name, version, capabilities, settings and commands |
+| File                            | What it does                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `kiosk-satellite-plugin.json`   | The manifest: name, version, capabilities, settings and commands                                                         |
 | `src/.../HouseToolsPlugin.java` | Entry point. Settings, Home Assistant data, which screensaver shows, auto-close, touch tracking, Home Assistant entities |
-| `src/.../Screensaver.java` | The screensaver view: photo screen and night screen, taps, chips, corners |
-| `src/.../SkyView.java` | The animated sky: colors, stars, moon, sun, clouds, rain, snow, lightning |
-| `src/.../AlertBanner.java` | The alert bar at the top of the screen |
-| `src/.../Net.java` | HTTP downloads, image decoding and JSON helpers |
-| `assets/stars.csv` | The bright-star catalog |
-| `assets/icon.png` | The plugin icon |
-| `sdk/` | Kiosk Satellite's plugin SDK, compile-time only, never packaged |
-| `tools/` | Build scripts from the Kiosk Satellite plugin template |
+| `src/.../Screensaver.java`      | The screensaver view: photo screen and night screen, taps, chips, corners                                                |
+| `src/.../SkyView.java`          | The animated sky: colors, stars, moon, sun, clouds, rain, snow, lightning                                                |
+| `src/.../AlertBanner.java`      | The alert bar at the top of the screen                                                                                   |
+| `src/.../Net.java`              | HTTP downloads, image decoding and JSON helpers                                                                          |
+| `assets/stars.csv`              | The bright-star catalog                                                                                                  |
+| `assets/icon.png`               | The plugin icon                                                                                                          |
+| `sdk/`                          | Kiosk Satellite's plugin SDK, compile-time only, never packaged                                                          |
+| `tools/`                        | Build scripts from the Kiosk Satellite plugin template                                                                   |
 
 ## Data flow
 
@@ -36,11 +36,11 @@ One `render_template` subscription carries everything the screens show. Home Ass
 
 ## Which screensaver shows
 
-| Room | Setting | What shows |
-| --- | --- | --- |
-| Lit (at or above **Dark room below**) | Use this screensaver | Photo screen |
-| Dark | Use the sky screensaver in a dark room | Night screen (sky) |
-| Dark | Sky screensaver off | The tablet's own screensaver (the plugin clears its choice) |
+| Room                                  | Setting                                | What shows                                                  |
+| ------------------------------------- | -------------------------------------- | ----------------------------------------------------------- |
+| Lit (at or above **Dark room below**) | Use this screensaver                   | Photo screen                                                |
+| Dark                                  | Use the sky screensaver in a dark room | Night screen (sky)                                          |
+| Dark                                  | Sky screensaver off                    | The tablet's own screensaver (the plugin clears its choice) |
 
 There's a little hysteresis (3 lux) so a reading on the line doesn't flip back and forth. The choice is a plugin override in Kiosk Satellite: it isn't saved, so the plugin sets it again after every start and every five minutes.
 

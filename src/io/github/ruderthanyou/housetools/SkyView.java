@@ -5,9 +5,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
-import android.graphics.Matrix;
 import android.graphics.LightingColorFilter;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
@@ -40,6 +40,7 @@ import java.util.Random;
  * recomputed every 30 seconds. Redraws run about 12 times a second, only while the view is visible.
  */
 final class SkyView extends View {
+
     private static final int STARS = 220;
     private final float[] sx = new float[STARS], sy = new float[STARS], ss = new float[STARS], sp = new float[STARS];
     // Clouds: pre-drawn puffy cloud bitmaps in three depth layers, drifting at different speeds.
@@ -85,7 +86,7 @@ final class SkyView extends View {
             sp[i] = random.nextFloat() * 6.28f;
         }
         for (int i = 0; i < CLOUDS; i++) {
-            cloudLayer[i] = i % 3;                                   // 0 far, 1 mid, 2 near
+            cloudLayer[i] = i % 3; // 0 far, 1 mid, 2 near
             cloudX[i] = random.nextFloat() * 1.4f - 0.2f;
             cloudY[i] = 0.02f + random.nextFloat() * 0.42f + cloudLayer[i] * 0.04f;
             cloudSpeed[i] = 0.0025f + cloudLayer[i] * 0.003f + random.nextFloat() * 0.0015f;
@@ -98,20 +99,35 @@ final class SkyView extends View {
         }
     }
 
-    void setMoonPhoto(Bitmap photo) { moonPhoto = photo; invalidate(); }
+    void setMoonPhoto(Bitmap photo) {
+        moonPhoto = photo;
+        invalidate();
+    }
 
-    void setWind(double speed) { windSpeed = speed; }
+    void setWind(double speed) {
+        windSpeed = speed;
+    }
 
     void setStars(float[] ra, float[] dec, float[] mag, float[] bv) {
-        catRa = ra; catDec = dec; catMag = mag; catBv = bv; realAt = 0; invalidate();
+        catRa = ra;
+        catDec = dec;
+        catMag = mag;
+        catBv = bv;
+        realAt = 0;
+        invalidate();
     }
 
     void setLocation(double latitude, double longitude) {
         if (latitude == lat && longitude == lon) return;
-        lat = latitude; lon = longitude; realAt = 0; invalidate();
+        lat = latitude;
+        lon = longitude;
+        realAt = 0;
+        invalidate();
     }
 
-    private boolean real() { return catRa != null && !Double.isNaN(lat) && !Double.isNaN(lon); }
+    private boolean real() {
+        return catRa != null && !Double.isNaN(lat) && !Double.isNaN(lon);
+    }
 
     /**
      * Where each star (and the moon) is right now, seen looking toward the equator (south in the northern
@@ -121,13 +137,20 @@ final class SkyView extends View {
     private void computeReal(int w, int h) {
         long now = System.currentTimeMillis();
         if (realAt != 0 && now - realAt < 30_000 && w == realW && h == realH) return;
-        realAt = now; realW = w; realH = h;
+        realAt = now;
+        realW = w;
+        realH = h;
         double jd = now / 86400000.0 + 2440587.5, d = jd - 2451545.0;
         double lst = Math.toRadians(norm(280.46061837 + 360.98564736629 * d + lon));
         double phi = Math.toRadians(lat);
         boolean south = lat < 0;
         int n = catRa.length;
-        if (realX.length != n) { realX = new float[n]; realY = new float[n]; realR = new float[n]; realColor = new int[n]; }
+        if (realX.length != n) {
+            realX = new float[n];
+            realY = new float[n];
+            realR = new float[n];
+            realColor = new int[n];
+        }
         realCount = 0;
         for (int i = 0; i < n; i++) {
             float[] xy = project(Math.toRadians(catRa[i]), Math.toRadians(catDec[i]), lst, phi, south, w, h);
@@ -147,8 +170,10 @@ final class SkyView extends View {
         double ra = Math.atan2(Math.sin(lambda) * Math.cos(eps) - Math.tan(beta) * Math.sin(eps), Math.cos(lambda));
         double dec = Math.asin(Math.sin(beta) * Math.cos(eps) + Math.cos(beta) * Math.sin(eps) * Math.sin(lambda));
         float[] m = project(ra, dec, lst, phi, south, w, h);
-        if (m == null) { moonViewX = Float.NaN; moonViewY = Float.NaN; }
-        else {
+        if (m == null) {
+            moonViewX = Float.NaN;
+            moonViewY = Float.NaN;
+        } else {
             float margin = 50 * density; // a moon off to the north side sits at the edge instead of vanishing
             moonViewX = Math.max(margin, Math.min(w - margin, m[0]));
             moonViewY = Math.max(margin, m[1]);
@@ -164,23 +189,32 @@ final class SkyView extends View {
         // Azimuth measured from south, west positive.
         double az = Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
         if (south) az = az > 0 ? az - Math.PI : az + Math.PI; // southern hemisphere: look north
-        double fx = (az + Math.PI / 2) / Math.PI;               // -90 (east) .. +90 (west) -> 0..1
-        if (fx < -0.05 || fx > 1.05) return null;              // behind the viewer
-        double fy = 1 - Math.toDegrees(alt) / 75.0;            // horizon at the bottom, 75 degrees at the top
-        return new float[] {(float) (fx * w), (float) (fy * h * 0.92)};
+        double fx = (az + Math.PI / 2) / Math.PI; // -90 (east) .. +90 (west) -> 0..1
+        if (fx < -0.05 || fx > 1.05) return null; // behind the viewer
+        double fy = 1 - Math.toDegrees(alt) / 75.0; // horizon at the bottom, 75 degrees at the top
+        return new float[] { (float) (fx * w), (float) (fy * h * 0.92) };
     }
 
-    private static double norm(double deg) { deg %= 360; return deg < 0 ? deg + 360 : deg; }
+    private static double norm(double deg) {
+        deg %= 360;
+        return deg < 0 ? deg + 360 : deg;
+    }
 
     /** Blue-white hot stars to orange cool ones, from the B-V color index; fainter stars dimmer. */
     private static int starColor(float bv, float mag) {
         int c;
-        if (bv < 0) c = 0xCFDBFF; else if (bv < 0.4) c = 0xF2F4FF; else if (bv < 0.8) c = 0xFFF6E5;
-        else if (bv < 1.3) c = 0xFFDDB0; else c = 0xFFC08A;
+        if (bv < 0) c = 0xCFDBFF;
+        else if (bv < 0.4) c = 0xF2F4FF;
+        else if (bv < 0.8) c = 0xFFF6E5;
+        else if (bv < 1.3) c = 0xFFDDB0;
+        else c = 0xFFC08A;
         int a = (int) Math.max(110, Math.min(255, 255 - (mag - 1) * 32));
         return (a << 24) | c;
     }
-    void setSunAzimuth(double azimuth) { sunAzimuth = azimuth; }
+
+    void setSunAzimuth(double azimuth) {
+        sunAzimuth = azimuth;
+    }
 
     void setWeather(String condition, double sunElevation, double cloudCover) {
         this.condition = condition == null || condition.isEmpty() ? "clear-night" : condition;
@@ -189,24 +223,34 @@ final class SkyView extends View {
         invalidate();
     }
 
-    @Override protected void onWindowVisibilityChanged(int visibility) {
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
         running = visibility == VISIBLE;
         if (running) postInvalidateOnAnimation();
     }
 
-    @Override protected void onDetachedFromWindow() {
+    @Override
+    protected void onDetachedFromWindow() {
         running = false;
         super.onDetachedFromWindow();
     }
 
     private boolean cloudy() {
-        return condition.contains("cloud") || condition.equals("rainy") || condition.equals("pouring")
-            || condition.equals("snowy") || condition.equals("snowy-rainy") || condition.equals("fog")
-            || condition.startsWith("lightning") || cloudCover >= 60;
+        return (
+            condition.contains("cloud") ||
+            condition.equals("rainy") ||
+            condition.equals("pouring") ||
+            condition.equals("snowy") ||
+            condition.equals("snowy-rainy") ||
+            condition.equals("fog") ||
+            condition.startsWith("lightning") ||
+            cloudCover >= 60
+        );
     }
 
-    @Override protected void onDraw(Canvas canvas) {
+    @Override
+    protected void onDraw(Canvas canvas) {
         int w = getWidth(), h = getHeight();
         if (w == 0 || h == 0) return;
         float t = SystemClock.uptimeMillis() / 1000f;
@@ -214,11 +258,26 @@ final class SkyView extends View {
 
         // Sky gradient by the sun's height: night, twilight, day (kept dark: this is the dark-room screensaver).
         int top, bottom;
-        if (sunElevation < -12) { top = 0xFF03050B; bottom = 0xFF0B1224; }        // night
-        else if (sunElevation < -4) { top = 0xFF0A1230; bottom = 0xFF4A2A3A; }    // dusk / dawn
-        else if (sunElevation < 6) { top = 0xFF1C3A6B; bottom = 0xFFB0603E; }     // golden hour
-        else { top = 0xFF1A4A86; bottom = 0xFF5D8EC4; }                           // day, soft for a dark room
-        if (cloudy()) { top = mix(top, 0xFF15181E, 0.5f); bottom = mix(bottom, 0xFF22262E, 0.5f); }
+        if (sunElevation < -12) {
+            top = 0xFF03050B;
+            bottom = 0xFF0B1224;
+        } // night
+        else if (sunElevation < -4) {
+            top = 0xFF0A1230;
+            bottom = 0xFF4A2A3A;
+        } // dusk / dawn
+        else if (sunElevation < 6) {
+            top = 0xFF1C3A6B;
+            bottom = 0xFFB0603E;
+        } // golden hour
+        else {
+            top = 0xFF1A4A86;
+            bottom = 0xFF5D8EC4;
+        } // day, soft for a dark room
+        if (cloudy()) {
+            top = mix(top, 0xFF15181E, 0.5f);
+            bottom = mix(bottom, 0xFF22262E, 0.5f);
+        }
         paint.setShader(new LinearGradient(0, 0, 0, h, top, bottom, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, w, h, paint);
         paint.setShader(null);
@@ -226,7 +285,8 @@ final class SkyView extends View {
         // Stars on clear nights, twinkling. None where the moon is: it blocks them, dark side included.
         if (real()) computeReal(w, h);
         boolean moonUp = !real() || !Float.isNaN(moonViewX);
-        float moonX = real() ? moonViewX : w * 0.84f, moonY = real() ? moonViewY : h * 0.22f, moonR = 34 * density * 1.08f;
+        float moonX = real() ? moonViewX : w * 0.84f, moonY = real() ? moonViewY : h * 0.22f, moonR =
+            34 * density * 1.08f;
         if (night && !cloudy() && real()) {
             for (int i = 0; i < realCount; i++) {
                 float dx = realX[i] - moonX, dy = realY[i] - moonY;
@@ -278,12 +338,14 @@ final class SkyView extends View {
             if (cloudsBuiltFor != w) buildClouds(w);
             int shown = partly ? 4 : CLOUDS;
             boolean dim = sunElevation < -6;
-            paint.setColorFilter(dim ? null : new LightingColorFilter(0xFFFFFFFF, sunElevation < 6 ? 0x3A2A20 : 0x505050)); // daylight
+            paint.setColorFilter(
+                dim ? null : new LightingColorFilter(0xFFFFFFFF, sunElevation < 6 ? 0x3A2A20 : 0x505050)
+            ); // daylight
             for (int i = 0; i < shown; i++) {
                 Bitmap art = cloudArt[i];
                 if (art == null) continue;
                 float span = w + art.getWidth();
-                float x = (float) (((cloudX[i] * w + t * cloudSpeed[i] * w) % span + span) % span) - art.getWidth();
+                float x = (float) ((((cloudX[i] * w + t * cloudSpeed[i] * w) % span) + span) % span) - art.getWidth();
                 float y = cloudY[i] * h;
                 paint.setAlpha(dim ? 150 + cloudLayer[i] * 30 : 200 + cloudLayer[i] * 20);
                 canvas.drawBitmap(art, x, y, paint);
@@ -293,10 +355,15 @@ final class SkyView extends View {
         }
 
         // Rain in three layers, slanted by the wind; snow drifts.
-        boolean rain = condition.equals("rainy") || condition.equals("pouring") || condition.equals("lightning-rainy") || condition.equals("snowy-rainy") || condition.equals("hail");
+        boolean rain =
+            condition.equals("rainy") ||
+            condition.equals("pouring") ||
+            condition.equals("lightning-rainy") ||
+            condition.equals("snowy-rainy") ||
+            condition.equals("hail");
         boolean snow = condition.equals("snowy") || condition.equals("snowy-rainy");
         if (rain || snow) {
-            int count = condition.equals("pouring") ? DROPS : condition.equals("rainy") ? DROPS * 2 / 3 : DROPS / 2;
+            int count = condition.equals("pouring") ? DROPS : condition.equals("rainy") ? (DROPS * 2) / 3 : DROPS / 2;
             float slant = (float) Math.min(0.45, windSpeed / 60.0); // dx per dy
             for (int i = 0; i < count; i++) {
                 int layer = dropLayer[i];
@@ -308,7 +375,7 @@ final class SkyView extends View {
                     canvas.drawCircle(fx, fy, (1.2f + layer * 1.0f) * density, paint);
                     continue;
                 }
-                float speed = 0.55f + layer * 0.35f;                 // screen heights per second
+                float speed = 0.55f + layer * 0.35f; // screen heights per second
                 float len = (10 + layer * 10) * dropLen[i] * density;
                 float y = (float) ((dropY[i] + t * speed) % 1.0) * (h + len) - len;
                 float x = ((dropX[i] * (w + h * slant)) - (y + len) * slant);
@@ -322,7 +389,10 @@ final class SkyView extends View {
         if (condition.startsWith("lightning")) {
             long now = SystemClock.uptimeMillis();
             if (nextFlash == 0) nextFlash = now + 8000 + random.nextInt(17000);
-            if (now >= nextFlash) { flashUntil = now + 120 + random.nextInt(140); nextFlash = now + 8000 + random.nextInt(17000); }
+            if (now >= nextFlash) {
+                flashUntil = now + 120 + random.nextInt(140);
+                nextFlash = now + 8000 + random.nextInt(17000);
+            }
             if (now < flashUntil) {
                 paint.setColor(0x55DDE6FF);
                 canvas.drawRect(0, 0, w, h, paint);
@@ -338,7 +408,7 @@ final class SkyView extends View {
         Random r = new Random(11);
         Paint puff = new Paint(Paint.ANTI_ALIAS_FLAG);
         for (int i = 0; i < CLOUDS; i++) {
-            float scale = 0.55f + cloudLayer[i] * 0.3f;               // near clouds bigger
+            float scale = 0.55f + cloudLayer[i] * 0.3f; // near clouds bigger
             int cw = (int) (w * (0.30f + r.nextFloat() * 0.18f) * scale), ch = (int) (cw * 0.45f);
             if (cw < 8 || ch < 8) continue;
             Bitmap art = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
@@ -346,13 +416,24 @@ final class SkyView extends View {
             int puffs = 10 + r.nextInt(6);
             for (int k = 0; k < puffs; k++) {
                 float px = cw * (0.15f + 0.7f * r.nextFloat());
-                float base = ch * 0.62f;                               // flat-ish bottom
+                float base = ch * 0.62f; // flat-ish bottom
                 float pr = ch * (0.18f + 0.22f * r.nextFloat());
                 float py = base - pr * (0.2f + 0.8f * r.nextFloat());
                 // shaded underside first, highlight on top
-                puff.setShader(new RadialGradient(px, py + pr * 0.25f, pr, 0x99525866, 0x00525866, Shader.TileMode.CLAMP));
+                puff.setShader(
+                    new RadialGradient(px, py + pr * 0.25f, pr, 0x99525866, 0x00525866, Shader.TileMode.CLAMP)
+                );
                 c.drawCircle(px, py + pr * 0.25f, pr, puff);
-                puff.setShader(new RadialGradient(px - pr * 0.1f, py - pr * 0.25f, pr * 0.85f, 0xCC9FA8B8, 0x009FA8B8, Shader.TileMode.CLAMP));
+                puff.setShader(
+                    new RadialGradient(
+                        px - pr * 0.1f,
+                        py - pr * 0.25f,
+                        pr * 0.85f,
+                        0xCC9FA8B8,
+                        0x009FA8B8,
+                        Shader.TileMode.CLAMP
+                    )
+                );
                 c.drawCircle(px - pr * 0.1f, py - pr * 0.25f, pr * 0.85f, puff);
             }
             Bitmap old = cloudArt[i];
@@ -378,7 +459,7 @@ final class SkyView extends View {
             BitmapShader shader = new BitmapShader(photo, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
             Matrix m = new Matrix();
             m.setScale(scale, scale);
-            m.postTranslate(cx - photo.getWidth() / 2f * scale, cy - photo.getHeight() / 2f * scale);
+            m.postTranslate(cx - (photo.getWidth() / 2f) * scale, cy - (photo.getHeight() / 2f) * scale);
             shader.setLocalMatrix(m);
             paint.setShader(shader);
             paint.setAlpha(255);
@@ -404,7 +485,7 @@ final class SkyView extends View {
         Path terminator = new Path();
         terminator.addOval(ellipse, Path.Direction.CW);
         if (k > 0) lit.op(terminator, Path.Op.DIFFERENCE); // crescent
-        else lit.op(terminator, Path.Op.UNION);            // gibbous
+        else lit.op(terminator, Path.Op.UNION); // gibbous
         paint.setColor(0xFFE4E7EC);
         canvas.drawPath(lit, paint);
     }
@@ -419,6 +500,11 @@ final class SkyView extends View {
     private static int mix(int a, int b, float f) {
         int ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
         int br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-        return 0xFF000000 | ((int) (ar + (br - ar) * f) << 16) | ((int) (ag + (bg - ag) * f) << 8) | (int) (ab + (bb - ab) * f);
+        return (
+            0xFF000000 |
+            ((int) (ar + (br - ar) * f) << 16) |
+            ((int) (ag + (bg - ag) * f) << 8) |
+            (int) (ab + (bb - ab) * f)
+        );
     }
 }

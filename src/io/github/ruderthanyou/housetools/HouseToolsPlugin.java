@@ -18,20 +18,20 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import me.jxl.kiosk.plugins.KioskPlugin;
 import me.jxl.kiosk.plugins.PluginHost;
 
@@ -66,6 +66,7 @@ import me.jxl.kiosk.plugins.PluginHost;
  * ({@link #healthCheck}).
  */
 public final class HouseToolsPlugin implements KioskPlugin {
+
     private static final long POLL_MS = 5_000;
     private static final int MAX_TRIES_PER_COVER = 3;
     private static final long TOUCH_PUBLISH_MIN_MS = 10_000;
@@ -79,8 +80,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile long autoCloseMs = 120_000;
     private volatile long inUseMs = 5 * 60_000;
     private volatile String area = "";
-    private volatile String haUrlSetting = "";   // optional override
-    private volatile String ksHaUrl = "";        // Kiosk Satellite's own Home Assistant address
+    private volatile String haUrlSetting = ""; // optional override
+    private volatile String ksHaUrl = ""; // Kiosk Satellite's own Home Assistant address
     private volatile String screensaverName = "Home Screensaver";
     private volatile String garageEntity = "";
     private volatile String alarmEntity = "";
@@ -90,8 +91,10 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile boolean softText;
     private volatile String preferSensors = ""; // comma list of words to look for first in room sensor IDs
     private volatile String weatherEntity = "";
-    private static final String MOON_NORTH = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg";
-    private static final String MOON_SOUTH = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005588/frames/730x730_1x1_30p/moon.{frame}.jpg";
+    private static final String MOON_NORTH =
+        "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg";
+    private static final String MOON_SOUTH =
+        "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005588/frames/730x730_1x1_30p/moon.{frame}.jpg";
     private volatile String moonFrames = ""; // empty = NASA's 2026 images, north-up or south-up by Home Assistant's home latitude
     private volatile Double forecastHigh, forecastLow;
     private long forecastAt;
@@ -132,7 +135,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private int autoCloses;
 
     private final Runnable poll = new Runnable() {
-        @Override public void run() {
+        @Override
+        public void run() {
             if (!alive) return;
             try {
                 check();
@@ -145,7 +149,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     private long startedAt;
 
-    @Override public void start(PluginHost host, Map<String, Object> settings) {
+    @Override
+    public void start(PluginHost host, Map<String, Object> settings) {
         this.host = host;
         startedAt = System.currentTimeMillis();
         alive = true;
@@ -156,25 +161,39 @@ public final class HouseToolsPlugin implements KioskPlugin {
         } catch (Throwable ignored) {}
         main.post(this::attach);
         publishScreensaver();
-        try { host.subscribe("device.light"); } catch (Throwable error) { log("Light sensor: " + error); }
+        try {
+            host.subscribe("device.light");
+        } catch (Throwable error) {
+            log("Light sensor: " + error);
+        }
         // The event only fires on a change, so read the current level once: a room that stays dark
         // would otherwise never tell us.
         try {
             host.executeCommand("getLightLevel", Collections.emptyMap(), (ok, data, error) -> {
                 if (ok && data instanceof Map) lightReading(((Map<?, ?>) data).get("lux"));
             });
-        } catch (Throwable error) { log("Light level: " + error); }
-        try { host.subscribe("browser.state"); } catch (Throwable error) { log("Browser state: " + error); }
+        } catch (Throwable error) {
+            log("Light level: " + error);
+        }
+        try {
+            host.subscribe("browser.state");
+        } catch (Throwable error) {
+            log("Browser state: " + error);
+        }
         readHaUrl();
         subscribeHouse();
         applyMode();
     }
 
-    @Override public void configure(Map<String, Object> settings) {
+    @Override
+    public void configure(Map<String, Object> settings) {
         apply(settings);
         publishSwitch();
         if (!houseSubscriptionKey().equals(subscribedArea)) subscribeHouse();
-        if (!screensaverName.equals(publishedName)) { publishScreensaver(); modeApplied = null; }
+        if (!screensaverName.equals(publishedName)) {
+            publishScreensaver();
+            modeApplied = null;
+        }
         applyMode();
     }
 
@@ -221,7 +240,19 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     /** What the live template depends on; a change re-subscribes. */
     private String houseSubscriptionKey() {
-        return area + "|" + garageEntity + "|" + alarmEntity + "|" + alertsEntity + "|" + weatherEntity + "|" + preferSensors;
+        return (
+            area +
+            "|" +
+            garageEntity +
+            "|" +
+            alarmEntity +
+            "|" +
+            alertsEntity +
+            "|" +
+            weatherEntity +
+            "|" +
+            preferSensors
+        );
     }
 
     /**
@@ -250,7 +281,12 @@ public final class HouseToolsPlugin implements KioskPlugin {
                 }
                 log("Screensaver mode: " + error + ". Plugin modes: " + seen + "-> using " + modeId);
                 long wait = Math.min(300_000L, 5_000L << Math.min(6, modeRetries++)); // 5 s, 10 s, 20 s ... up to 5 min
-                main.postDelayed(() -> { if (alive) applyMode(); }, wait);
+                main.postDelayed(
+                    () -> {
+                        if (alive) applyMode();
+                    },
+                    wait
+                );
             });
         } catch (Throwable e) {
             log("Screensaver mode lookup: " + e);
@@ -265,21 +301,24 @@ public final class HouseToolsPlugin implements KioskPlugin {
         modeApplied = want;
         try {
             if (want) {
-                h.executeCommand("setScreensaverMode", Collections.singletonMap("mode", modeId),
-                    (ok, data, error) -> {
-                        if (ok) {
-                            boolean wasRetrying = modeRetries > 0 || !modeLogged;
-                            modeRetries = 0;
-                            modeLogged = true;
-                            if (wasRetrying) log("Screensaver selected (" + modeId + ")");
-                            return;
-                        }
-                        modeApplied = null;
-                        findModeAndRetry(error);
-                    });
+                h.executeCommand("setScreensaverMode", Collections.singletonMap("mode", modeId), (ok, data, error) -> {
+                    if (ok) {
+                        boolean wasRetrying = modeRetries > 0 || !modeLogged;
+                        modeRetries = 0;
+                        modeLogged = true;
+                        if (wasRetrying) log("Screensaver selected (" + modeId + ")");
+                        return;
+                    }
+                    modeApplied = null;
+                    findModeAndRetry(error);
+                });
             } else {
-                h.executeCommand("clearScreensaverMode", Collections.emptyMap(),
-                    (ok, data, error) -> { if (!ok) { log("Screensaver mode: " + error); modeApplied = null; } });
+                h.executeCommand("clearScreensaverMode", Collections.emptyMap(), (ok, data, error) -> {
+                    if (!ok) {
+                        log("Screensaver mode: " + error);
+                        modeApplied = null;
+                    }
+                });
             }
         } catch (Throwable error) {
             log("Screensaver mode: " + error);
@@ -287,24 +326,39 @@ public final class HouseToolsPlugin implements KioskPlugin {
         }
     }
 
-    @Override public void execute(String command, Map<String, Object> arguments) {
+    @Override
+    public void execute(String command, Map<String, Object> arguments) {
         if ("bringToFront".equals(command)) {
-            main.post(() -> { if (alive) bringToFront("command"); });
+            main.post(() -> {
+                if (alive) bringToFront("command");
+            });
             return;
         }
         throw new IllegalArgumentException("Unknown command " + command);
     }
 
-    @Override public void onEvent(String event, Map<String, Object> payload) {
+    @Override
+    public void onEvent(String event, Map<String, Object> payload) {
         if ("ks.device.light".equals(event)) {
             lightReading(payload.get("lux"));
             return;
         }
-        if ("ks.browser.state".equals(event)) { readHaUrl(); return; }
+        if ("ks.browser.state".equals(event)) {
+            readHaUrl();
+            return;
+        }
         if (("ks.ha.subscription." + houseKey).equals(event)) {
             if ("ended".equals(payload.get("type"))) {
                 log("House data ended (" + payload.get("error") + "); subscribing again");
-                main.postDelayed(() -> { if (alive) { subscribedArea = null; subscribeHouse(); } }, 10_000);
+                main.postDelayed(
+                    () -> {
+                        if (alive) {
+                            subscribedArea = null;
+                            subscribeHouse();
+                        }
+                    },
+                    10_000
+                );
                 return;
             }
             if ("event".equals(payload.get("type"))) {
@@ -317,7 +371,9 @@ public final class HouseToolsPlugin implements KioskPlugin {
                         screensaver.dataChanged();
                         final List<Object> alerts = Net.list(houseData.get("alerts"));
                         final boolean on = alertBannerOn;
-                        main.post(() -> { if (alive) banner.update(alerts, on); });
+                        main.post(() -> {
+                            if (alive) banner.update(alerts, on);
+                        });
                     } catch (Throwable error) {
                         log("House data: " + error);
                     }
@@ -332,20 +388,28 @@ public final class HouseToolsPlugin implements KioskPlugin {
             try {
                 host.updateSettings(values);
             } catch (Throwable notSupported) {
-                try { host.saveSettings(values); } catch (Throwable ignored) {}
+                try {
+                    host.saveSettings(values);
+                } catch (Throwable ignored) {}
             }
             publishSwitch();
-            main.post(() -> { coveredSince = -1; triesThisCover = 0; });
+            main.post(() -> {
+                coveredSince = -1;
+                triesThisCover = 0;
+            });
         }
     }
 
-    @Override public void stop() {
+    @Override
+    public void stop() {
         alive = false;
         main.removeCallbacksAndMessages(null);
         Application application = app;
         Application.ActivityLifecycleCallbacks registered = callbacks;
         if (application != null && registered != null) {
-            try { application.unregisterActivityLifecycleCallbacks(registered); } catch (Throwable ignored) {}
+            try {
+                application.unregisterActivityLifecycleCallbacks(registered);
+            } catch (Throwable ignored) {}
         }
         callbacks = null;
         unspy();
@@ -377,7 +441,9 @@ public final class HouseToolsPlugin implements KioskPlugin {
         Object night = settings.get("nightScreensaver");
         if (night instanceof Boolean) nightScreensaver = (Boolean) night;
         weatherEntity = entity(settings.get("weatherEntity"));
-        preferSensors = text(settings.get("preferSensors"), "").toLowerCase(java.util.Locale.US).replaceAll("[^a-z0-9_,]", "");
+        preferSensors = text(settings.get("preferSensors"), "")
+            .toLowerCase(java.util.Locale.US)
+            .replaceAll("[^a-z0-9_,]", "");
         moonFrames = text(settings.get("moonFrames"), "");
         photoSeconds = (int) clamp(settings.get("photoSeconds"), 10, 600, photoSeconds);
         photoBlock = (int) clamp(settings.get("photoBlock"), 1, 50, photoBlock);
@@ -399,7 +465,10 @@ public final class HouseToolsPlugin implements KioskPlugin {
         double v = ((Number) lux).doubleValue();
         // a little hysteresis so a reading on the line doesn't flip back and forth
         boolean nowDark = dark ? v < nightLux + 3 : v < nightLux;
-        if (nowDark != dark) { dark = nowDark; screensaver.darkChanged(nowDark); }
+        if (nowDark != dark) {
+            dark = nowDark;
+            screensaver.darkChanged(nowDark);
+        }
         applyMode();
     }
 
@@ -425,47 +494,61 @@ public final class HouseToolsPlugin implements KioskPlugin {
         PluginHost h = host;
         if (h == null) return;
         // A new key each time: reusing "house" right after unsubscribing it can lose the new subscription.
-        try { h.haUnsubscribe(houseKey); } catch (Throwable ignored) {} // unknown keys are ignored
+        try {
+            h.haUnsubscribe(houseKey);
+        } catch (Throwable ignored) {} // unknown keys are ignored
         houseKey = "house" + (++houseSubscriptions);
         subscribedArea = houseSubscriptionKey();
         String safeArea = area.replaceAll("[^a-z0-9_]", "");
         String template =
-            "{% set area = '" + safeArea + "' %}"
-            + "{% set garage = '" + garageEntity + "' %}{% set alarm = '" + alarmEntity + "' %}{% set alerts = '" + alertsEntity + "' %}"
-            + "{% set al = (area_entities(area) if area else []) | select('match','light\\.') | reject('search','_screen_kiosk$|_screen_browser$|_led$') | list %}"
-            + "{% set ns = namespace(l=[], p=[]) %}"
-            + "{% for l in al %}{% set base = l | regex_replace('_\\d+_light$', '_light') %}"
-            + "{% if base == l or base not in al %}{% set ns.l = ns.l + [{'id': l, 'name': state_attr(l,'friendly_name') or l, 'on': is_state(l,'on'), 'off_line': states(l) in ['unavailable','unknown']}] %}{% endif %}{% endfor %}"
-            + "{% for p in states.person if p.attributes.entity_picture %}{% set ns.p = ns.p + [{'name': p.name, 'home': p.state == 'home', 'pic': p.attributes.entity_picture}] %}{% endfor %}"
+            "{% set area = '" +
+            safeArea +
+            "' %}" +
+            "{% set garage = '" +
+            garageEntity +
+            "' %}{% set alarm = '" +
+            alarmEntity +
+            "' %}{% set alerts = '" +
+            alertsEntity +
+            "' %}" +
+            "{% set al = (area_entities(area) if area else []) | select('match','light\\.') | reject('search','_screen_kiosk$|_screen_browser$|_led$') | list %}" +
+            "{% set ns = namespace(l=[], p=[]) %}" +
+            "{% for l in al %}{% set base = l | regex_replace('_\\d+_light$', '_light') %}" +
+            "{% if base == l or base not in al %}{% set ns.l = ns.l + [{'id': l, 'name': state_attr(l,'friendly_name') or l, 'on': is_state(l,'on'), 'off_line': states(l) in ['unavailable','unknown']}] %}{% endif %}{% endfor %}" +
+            "{% for p in states.person if p.attributes.entity_picture %}{% set ns.p = ns.p + [{'name': p.name, 'home': p.state == 'home', 'pic': p.attributes.entity_picture}] %}{% endfor %}" +
             // Room temperature/humidity: sensors in the area with that device class, not batteries, chips or
             // device internals; preferred words first, then one with a matching humidity sensor, then any.
-            + "{% set prefer = '" + preferSensors + "'.split(',') | reject('eq','') | list %}"
-            + "{% set skip = 'battery|internal|device_temperature|chip|cpu|pcb|mcu|nozzle|_bed_|chamber|_ams_|_esp_|processor|soc|board' %}"
-            + "{% set sens = (area_entities(area) if area else []) | select('match','sensor[.]') | reject('search', skip) | list %}"
-            + "{% set temps = sens | select('is_state_attr','device_class','temperature') | select('has_value') | list %}"
-            + "{% set hums = sens | select('is_state_attr','device_class','humidity') | select('has_value') | list %}"
-            + "{% set ns2 = namespace(t='', h='') %}"
-            + "{% for word in prefer %}"
-            + "{% for e in temps if ns2.t == '' and word in e %}{% set ns2.t = e %}{% endfor %}"
-            + "{% for e in hums if ns2.h == '' and word in e %}{% set ns2.h = e %}{% endfor %}"
-            + "{% endfor %}"
-            + "{% for e in temps if ns2.t == '' and (e | regex_replace('temperature$', 'humidity')) in hums %}{% set ns2.t = e %}{% set ns2.h = e | regex_replace('temperature$', 'humidity') %}{% endfor %}"
-            + "{% if ns2.t == '' and temps %}{% set ns2.t = temps[0] %}{% endif %}"
-            + "{% if ns2.h == '' and hums %}{% set ns2.h = hums[0] %}{% endif %}"
-            + "{% set cl = ((area_entities(area) if area else []) | select('match','climate\\.') | list + [''])[0] %}"
-            + "{% set clim = {'temp': (states(ns2.t) | float(0) | round(0) | int) if ns2.t else none, 'unit': state_attr(ns2.t,'unit_of_measurement') if ns2.t else '',"
-            + " 'hum': (states(ns2.h) | float(0) | round(0) | int) if ns2.h else none,"
-            + " 'mode': states(cl) if cl else '', 'action': state_attr(cl,'hvac_action') if cl else '', 'target': state_attr(cl,'temperature') if cl else none} %}"
-            + "{% set items = (state_attr(alerts,'items') if alerts else none) %}"
-            + "{% set wx = '" + weatherEntity + "' %}"
-            + "{% set weather = {'state': states(wx), 'temp': state_attr(wx,'temperature'), 'unit': state_attr(wx,'temperature_unit') or '',"
-            + " 'hum': state_attr(wx,'humidity'), 'dew': state_attr(wx,'dew_point'), 'wind': state_attr(wx,'wind_speed'), 'wind_unit': state_attr(wx,'wind_speed_unit') or '',"
-            + " 'cloud': state_attr(wx,'cloud_coverage')} if wx else {} %}"
-            + "{{ {'area': (area_name(area) if area else '') or '', 'climate': clim, 'people': ns.p,"
-            + " 'garage': states(garage) if garage else '', 'alarm': states(alarm) if alarm else '',"
-            + " 'alerts': (items if items is list else []), 'lights': ns.l, 'weather': weather,"
-            + " 'sun': state_attr('sun.sun','elevation'), 'sun_az': state_attr('sun.sun','azimuth'),"
-            + " 'lat': state_attr('zone.home','latitude'), 'lon': state_attr('zone.home','longitude')} | to_json }}";
+            "{% set prefer = '" +
+            preferSensors +
+            "'.split(',') | reject('eq','') | list %}" +
+            "{% set skip = 'battery|internal|device_temperature|chip|cpu|pcb|mcu|nozzle|_bed_|chamber|_ams_|_esp_|processor|soc|board' %}" +
+            "{% set sens = (area_entities(area) if area else []) | select('match','sensor[.]') | reject('search', skip) | list %}" +
+            "{% set temps = sens | select('is_state_attr','device_class','temperature') | select('has_value') | list %}" +
+            "{% set hums = sens | select('is_state_attr','device_class','humidity') | select('has_value') | list %}" +
+            "{% set ns2 = namespace(t='', h='') %}" +
+            "{% for word in prefer %}" +
+            "{% for e in temps if ns2.t == '' and word in e %}{% set ns2.t = e %}{% endfor %}" +
+            "{% for e in hums if ns2.h == '' and word in e %}{% set ns2.h = e %}{% endfor %}" +
+            "{% endfor %}" +
+            "{% for e in temps if ns2.t == '' and (e | regex_replace('temperature$', 'humidity')) in hums %}{% set ns2.t = e %}{% set ns2.h = e | regex_replace('temperature$', 'humidity') %}{% endfor %}" +
+            "{% if ns2.t == '' and temps %}{% set ns2.t = temps[0] %}{% endif %}" +
+            "{% if ns2.h == '' and hums %}{% set ns2.h = hums[0] %}{% endif %}" +
+            "{% set cl = ((area_entities(area) if area else []) | select('match','climate\\.') | list + [''])[0] %}" +
+            "{% set clim = {'temp': (states(ns2.t) | float(0) | round(0) | int) if ns2.t else none, 'unit': state_attr(ns2.t,'unit_of_measurement') if ns2.t else ''," +
+            " 'hum': (states(ns2.h) | float(0) | round(0) | int) if ns2.h else none," +
+            " 'mode': states(cl) if cl else '', 'action': state_attr(cl,'hvac_action') if cl else '', 'target': state_attr(cl,'temperature') if cl else none} %}" +
+            "{% set items = (state_attr(alerts,'items') if alerts else none) %}" +
+            "{% set wx = '" +
+            weatherEntity +
+            "' %}" +
+            "{% set weather = {'state': states(wx), 'temp': state_attr(wx,'temperature'), 'unit': state_attr(wx,'temperature_unit') or ''," +
+            " 'hum': state_attr(wx,'humidity'), 'dew': state_attr(wx,'dew_point'), 'wind': state_attr(wx,'wind_speed'), 'wind_unit': state_attr(wx,'wind_speed_unit') or ''," +
+            " 'cloud': state_attr(wx,'cloud_coverage')} if wx else {} %}" +
+            "{{ {'area': (area_name(area) if area else '') or '', 'climate': clim, 'people': ns.p," +
+            " 'garage': states(garage) if garage else '', 'alarm': states(alarm) if alarm else ''," +
+            " 'alerts': (items if items is list else []), 'lights': ns.l, 'weather': weather," +
+            " 'sun': state_attr('sun.sun','elevation'), 'sun_az': state_attr('sun.sun','azimuth')," +
+            " 'lat': state_attr('zone.home','latitude'), 'lon': state_attr('zone.home','longitude')} | to_json }}";
         Map<String, Object> message = new HashMap<>();
         message.put("type", "render_template");
         message.put("template", template);
@@ -482,21 +565,47 @@ public final class HouseToolsPlugin implements KioskPlugin {
     }
 
     // Used by Screensaver and AlertBanner.
-    PluginHost host() { return alive ? host : null; }
-    Map<String, Object> data() { return houseData; }
-    boolean isDark() { return dark; }
-    String haUrl() { return haUrlSetting.isEmpty() ? ksHaUrl : haUrlSetting; }
-    String photoIndexPath() { return photoIndexPath; }
-    boolean nightScreensaver() { return nightScreensaver; }
-    boolean softText() { return softText; }
+    PluginHost host() {
+        return alive ? host : null;
+    }
+
+    Map<String, Object> data() {
+        return houseData;
+    }
+
+    boolean isDark() {
+        return dark;
+    }
+
+    String haUrl() {
+        return haUrlSetting.isEmpty() ? ksHaUrl : haUrlSetting;
+    }
+
+    String photoIndexPath() {
+        return photoIndexPath;
+    }
+
+    boolean nightScreensaver() {
+        return nightScreensaver;
+    }
+
+    boolean softText() {
+        return softText;
+    }
 
     java.io.InputStream openAsset(String name) throws java.io.IOException {
         PluginHost h = host();
         if (h == null) throw new java.io.IOException("Plugin stopped");
         return h.openAsset(name);
     }
-    Double forecastHigh() { return forecastHigh; }
-    Double forecastLow() { return forecastLow; }
+
+    Double forecastHigh() {
+        return forecastHigh;
+    }
+
+    Double forecastLow() {
+        return forecastLow;
+    }
 
     /** NASA's moon image for this hour of the year (frames numbered from 1 at 00:00 UTC on January 1). */
     String moonUrl() {
@@ -525,7 +634,11 @@ public final class HouseToolsPlugin implements KioskPlugin {
         message.put("return_response", true);
         try {
             h.haCall(message, (ok, data, error) -> {
-                if (!ok) { log("Forecast: " + error); forecastAt = 0; return; }
+                if (!ok) {
+                    log("Forecast: " + error);
+                    forecastAt = 0;
+                    return;
+                }
                 try {
                     Map<String, Object> response = Net.map(Net.map(data).get("response"));
                     List<Object> days = Net.list(Net.map(response.get(wx)).get("forecast"));
@@ -543,14 +656,25 @@ public final class HouseToolsPlugin implements KioskPlugin {
             log("Forecast: " + e);
         }
     }
-    int photoSeconds() { return photoSeconds; }
-    int photoBlock() { return photoBlock; }
-    int alertMinutes() { return alertMinutes; }
+
+    int photoSeconds() {
+        return photoSeconds;
+    }
+
+    int photoBlock() {
+        return photoBlock;
+    }
+
+    int alertMinutes() {
+        return alertMinutes;
+    }
 
     void closeScreensaver() {
         PluginHost h = host();
         if (h == null) return;
-        h.executeCommand("stopScreensaver", Collections.emptyMap(), (ok, data, error) -> { if (!ok) log("Close screensaver: " + error); });
+        h.executeCommand("stopScreensaver", Collections.emptyMap(), (ok, data, error) -> {
+            if (!ok) log("Close screensaver: " + error);
+        });
     }
 
     void toggleLight(String entityId) {
@@ -561,7 +685,9 @@ public final class HouseToolsPlugin implements KioskPlugin {
         message.put("domain", "light");
         message.put("service", "toggle");
         message.put("target", Collections.singletonMap("entity_id", entityId));
-        h.haCall(message, (ok, data, error) -> { if (!ok) log("Light " + entityId + ": " + error); });
+        h.haCall(message, (ok, data, error) -> {
+            if (!ok) log("Light " + entityId + ": " + error);
+        });
     }
 
     /** Background threads only: a signed link for an HA path such as /media/local/photos/x.jpg. */
@@ -600,8 +726,12 @@ public final class HouseToolsPlugin implements KioskPlugin {
             spy(current);
         }
         publishTouch(true);
-        status(current != null ? "Watching for windows left on top."
-            : "Waiting for the Kiosk Satellite screen. Turn the screen off and on if this stays.", false);
+        status(
+            current != null
+                ? "Watching for windows left on top."
+                : "Waiting for the Kiosk Satellite screen. Turn the screen off and on if this stays.",
+            false
+        );
         main.post(poll);
     }
 
@@ -612,7 +742,10 @@ public final class HouseToolsPlugin implements KioskPlugin {
         lastHealthCheck = now;
         modeApplied = null; // setScreensaverMode again; harmless if nothing changed
         applyMode();
-        if (lastHouseData > 0 && now - lastHouseData > 30 * 60_000L || lastHouseData == 0 && now - startedAt > 120_000L) {
+        if (
+            (lastHouseData > 0 && now - lastHouseData > 30 * 60_000L) ||
+            (lastHouseData == 0 && now - startedAt > 120_000L)
+        ) {
             log("No house data for a while; subscribing again");
             subscribedArea = null;
             subscribeHouse();
@@ -683,22 +816,51 @@ public final class HouseToolsPlugin implements KioskPlugin {
         }
         if (!"command".equals(reason)) {
             autoCloses++;
-            try { host.publishSensor("auto_closes", "Auto-closes", counterMeta(), (double) autoCloses); } catch (Throwable ignored) {}
+            try {
+                host.publishSensor("auto_closes", "Auto-closes", counterMeta(), (double) autoCloses);
+            } catch (Throwable ignored) {}
         }
         log("Brought Kiosk Satellite to front (" + reason + ").");
     }
 
     private final class Tracker implements Application.ActivityLifecycleCallbacks {
-        private void remember(Activity a) { activity = new WeakReference<>(a); spy(a); }
-        @Override public void onActivityCreated(Activity a, Bundle state) { remember(a); }
-        @Override public void onActivityStarted(Activity a) { remember(a); }
-        @Override public void onActivityResumed(Activity a) { remember(a); }
-        @Override public void onActivityPaused(Activity a) {}
-        @Override public void onActivityStopped(Activity a) {}
-        @Override public void onActivitySaveInstanceState(Activity a, Bundle state) {}
-        @Override public void onActivityDestroyed(Activity a) {
+
+        private void remember(Activity a) {
+            activity = new WeakReference<>(a);
+            spy(a);
+        }
+
+        @Override
+        public void onActivityCreated(Activity a, Bundle state) {
+            remember(a);
+        }
+
+        @Override
+        public void onActivityStarted(Activity a) {
+            remember(a);
+        }
+
+        @Override
+        public void onActivityResumed(Activity a) {
+            remember(a);
+        }
+
+        @Override
+        public void onActivityPaused(Activity a) {}
+
+        @Override
+        public void onActivityStopped(Activity a) {}
+
+        @Override
+        public void onActivitySaveInstanceState(Activity a, Bundle state) {}
+
+        @Override
+        public void onActivityDestroyed(Activity a) {
             if (activity.get() == a) activity = new WeakReference<>(null);
-            if (spiedWindow.get() == a.getWindow()) { spiedWindow = new WeakReference<>(null); spiedOriginal = null; }
+            if (spiedWindow.get() == a.getWindow()) {
+                spiedWindow = new WeakReference<>(null);
+                spiedOriginal = null;
+            }
         }
     }
 
@@ -706,12 +868,21 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     /** Marker so a window we already wrap is not wrapped twice. */
     private final class TouchSpy implements InvocationHandler {
-        final Window.Callback original;
-        TouchSpy(Window.Callback original) { this.original = original; }
 
-        @Override public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            if (args != null && args.length == 1 && args[0] instanceof MotionEvent
-                    && "dispatchTouchEvent".equals(method.getName())) {
+        final Window.Callback original;
+
+        TouchSpy(Window.Callback original) {
+            this.original = original;
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (
+                args != null &&
+                args.length == 1 &&
+                args[0] instanceof MotionEvent &&
+                "dispatchTouchEvent".equals(method.getName())
+            ) {
                 try {
                     if (((MotionEvent) args[0]).getActionMasked() == MotionEvent.ACTION_DOWN) touched();
                 } catch (Throwable ignored) {}
@@ -738,7 +909,10 @@ public final class HouseToolsPlugin implements KioskPlugin {
         if (Proxy.isProxyClass(current.getClass()) && Proxy.getInvocationHandler(current) instanceof TouchSpy) return;
         try {
             Window.Callback wrapped = (Window.Callback) Proxy.newProxyInstance(
-                Window.Callback.class.getClassLoader(), new Class<?>[] {Window.Callback.class}, new TouchSpy(current));
+                Window.Callback.class.getClassLoader(),
+                new Class<?>[] { Window.Callback.class },
+                new TouchSpy(current)
+            );
             unspy(); // only ever keep one window wrapped
             window.setCallback(wrapped);
             spiedWindow = new WeakReference<>(window);
@@ -757,12 +931,16 @@ public final class HouseToolsPlugin implements KioskPlugin {
         if (window == null || original == null) return;
         Runnable restore = () -> {
             Window.Callback current = window.getCallback();
-            if (current != null && Proxy.isProxyClass(current.getClass())
-                    && Proxy.getInvocationHandler(current) instanceof TouchSpy) {
+            if (
+                current != null &&
+                Proxy.isProxyClass(current.getClass()) &&
+                Proxy.getInvocationHandler(current) instanceof TouchSpy
+            ) {
                 window.setCallback(original);
             }
         };
-        if (Looper.myLooper() == Looper.getMainLooper()) restore.run(); else main.post(restore);
+        if (Looper.myLooper() == Looper.getMainLooper()) restore.run();
+        else main.post(restore);
     }
 
     private void touched() {
@@ -776,12 +954,18 @@ public final class HouseToolsPlugin implements KioskPlugin {
         boolean inUse = touch >= 0 && SystemClock.elapsedRealtime() - touch < inUseMs;
         if (publishedInUse == null || publishedInUse != inUse) {
             publishedInUse = inUse;
-            try { host.publishBinarySensor("in_use", "In use", "", inUse); } catch (Throwable ignored) {}
+            try {
+                host.publishBinarySensor("in_use", "In use", "", inUse);
+            } catch (Throwable ignored) {}
         }
         if (touch == lastTouchPublished) return;
         // Throttle: a burst of touches is sent at most every 10 s; the poll sends the latest one after that.
-        if (!force && lastTouchPublished >= 0 && touch - lastTouchPublished < TOUCH_PUBLISH_MIN_MS
-                && SystemClock.elapsedRealtime() - lastTouchPublished < TOUCH_PUBLISH_MIN_MS) return;
+        if (
+            !force &&
+            lastTouchPublished >= 0 &&
+            touch - lastTouchPublished < TOUCH_PUBLISH_MIN_MS &&
+            SystemClock.elapsedRealtime() - lastTouchPublished < TOUCH_PUBLISH_MIN_MS
+        ) return;
         lastTouchPublished = touch;
         String text = null;
         if (touch >= 0) {
@@ -790,7 +974,9 @@ public final class HouseToolsPlugin implements KioskPlugin {
             format.setTimeZone(TimeZone.getTimeZone("UTC"));
             text = format.format(new Date(wall));
         }
-        try { host.publishTextSensor("last_touch", "Last touched", text); } catch (Throwable ignored) {}
+        try {
+            host.publishTextSensor("last_touch", "Last touched", text);
+        } catch (Throwable ignored) {}
     }
 
     // ----- Android framework lookups (no Kiosk Satellite internals) -----
@@ -834,12 +1020,16 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private void publishCovered(boolean covered) {
         if (publishedCovered != null && publishedCovered == covered) return;
         publishedCovered = covered;
-        try { host.publishBinarySensor("covered", "Window on top", "", covered); } catch (Throwable ignored) {}
+        try {
+            host.publishBinarySensor("covered", "Window on top", "", covered);
+        } catch (Throwable ignored) {}
     }
 
     private void publishSwitch() {
         if (!alive) return;
-        try { host.publishSwitch("auto_close", "Auto-close", autoClose); } catch (Throwable ignored) {}
+        try {
+            host.publishSwitch("auto_close", "Auto-close", autoClose);
+        } catch (Throwable ignored) {}
     }
 
     private static Map<String, Object> counterMeta() {
@@ -851,14 +1041,20 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     void status(String message, boolean error) {
         if (!alive) return;
-        try { host.status(message, error); } catch (Throwable ignored) {}
+        try {
+            host.status(message, error);
+        } catch (Throwable ignored) {}
     }
 
     void log(String message) {
         if (!alive) return;
-        try { host.log(message); } catch (Throwable ignored) {}
+        try {
+            host.log(message);
+        } catch (Throwable ignored) {}
         // Also visible in Home Assistant, since plugin logs can't be read remotely.
         String text = message.length() > 240 ? message.substring(0, 240) : message;
-        try { host.publishTextSensor("last_message", "Plugin message", text); } catch (Throwable ignored) {}
+        try {
+            host.publishTextSensor("last_message", "Plugin message", text);
+        } catch (Throwable ignored) {}
     }
 }

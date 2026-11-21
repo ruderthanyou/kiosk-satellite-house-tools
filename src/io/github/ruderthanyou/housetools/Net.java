@@ -24,6 +24,7 @@ import org.json.JSONObject;
  * maps and lists, and {@link #map}, {@link #list} and {@link #str} read them without casts or null checks.
  */
 final class Net {
+
     private Net() {}
 
     static byte[] get(String url, int maxBytes) throws IOException {
@@ -56,7 +57,9 @@ final class Net {
         BitmapFactory.decodeByteArray(data, 0, data.length, bounds);
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
         int sample = 1;
-        while (bounds.outWidth / (sample * 2) >= targetWidth && bounds.outHeight / (sample * 2) >= targetHeight) sample *= 2;
+        while (
+            bounds.outWidth / (sample * 2) >= targetWidth && bounds.outHeight / (sample * 2) >= targetHeight
+        ) sample *= 2;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = sample;
         options.inPreferredConfig = alpha ? Bitmap.Config.ARGB_8888 : Bitmap.Config.RGB_565;
@@ -74,10 +77,18 @@ final class Net {
         byte[] bytes = segment.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         for (byte b : bytes) {
             int c = b & 0xff;
-            boolean plain = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
-                || c == '-' || c == '_' || c == '.' || c == '~';
+            boolean plain =
+                (c >= 'a' && c <= 'z') ||
+                (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') ||
+                c == '-' ||
+                c == '_' ||
+                c == '.' ||
+                c == '~';
             if (plain) out.append((char) c);
-            else out.append('%').append(Character.toUpperCase(Character.forDigit(c >> 4, 16)))
+            else out
+                .append('%')
+                .append(Character.toUpperCase(Character.forDigit(c >> 4, 16)))
                 .append(Character.toUpperCase(Character.forDigit(c & 15, 16)));
         }
         return out.toString();
@@ -94,10 +105,15 @@ final class Net {
         if (value instanceof JSONObject) {
             JSONObject object = (JSONObject) value;
             Map<String, Object> map = new LinkedHashMap<>();
-            for (Iterator<String> keys = object.keys(); keys.hasNext(); ) {
+            for (Iterator<String> keys = object.keys(); keys.hasNext();) {
                 String key = keys.next();
                 Object item = object.get(key);
-                map.put(key, item == JSONObject.NULL ? null : (item instanceof JSONObject || item instanceof JSONArray ? plain(item) : item));
+                map.put(
+                    key,
+                    item == JSONObject.NULL
+                        ? null
+                        : (item instanceof JSONObject || item instanceof JSONArray ? plain(item) : item)
+                );
             }
             return map;
         }
@@ -106,7 +122,11 @@ final class Net {
             List<Object> list = new ArrayList<>();
             for (int i = 0; i < array.length(); i++) {
                 Object item = array.get(i);
-                list.add(item == JSONObject.NULL ? null : (item instanceof JSONObject || item instanceof JSONArray ? plain(item) : item));
+                list.add(
+                    item == JSONObject.NULL
+                        ? null
+                        : (item instanceof JSONObject || item instanceof JSONArray ? plain(item) : item)
+                );
             }
             return list;
         }
@@ -123,5 +143,7 @@ final class Net {
         return value instanceof List ? (List<Object>) value : new ArrayList<>();
     }
 
-    static String str(Object value) { return value == null ? "" : String.valueOf(value); }
+    static String str(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
 }

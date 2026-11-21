@@ -17,23 +17,23 @@ Home Assistant's address comes from Kiosk Satellite, so there's nothing to set f
 
 The room's temperature and humidity come from a temperature (and humidity) sensor in the room's area, skipping batteries, chips and device internals, and preferring one with a matching humidity sensor. **Preferred room sensors** lets you name the ones to use first.
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| Use this screensaver | Off | Show it in a lit room |
-| Screensaver name | Home Screensaver | Its name in Kiosk Satellite's screensaver list |
-| Room (area ID) | empty | Home Assistant area whose lights and climate show, such as `living_room` |
-| Garage door | empty | A cover entity for the garage chip |
-| Alarm | empty | An alarm panel entity for the alarm chip |
-| Preferred room sensors (optional) | empty | Words to look for first in room sensor IDs |
-| Photo list | `/local/screensaver/photo_index.json` | Where the photo list file is |
-| Each photo for | 30 s | How long each photo shows |
-| Photos in a row | 1 | 1 = every photo at random. More = that many from one random spot |
-| Dark room below | 2 lx | Below this, the tablet's own screensaver shows |
-| Home Assistant address (optional) | empty | Leave empty to use Kiosk Satellite's |
-| Use the sky screensaver in a dark room | Off | See below |
-| Soft gray text | Off | Gray text and dimmer colors, for OLED screens |
-| Weather | empty | Weather entity for the sky screensaver |
-| Moon images (optional) | empty | Another year's NASA image address |
+| Setting                                | Default                               | Meaning                                                                  |
+| -------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------ |
+| Use this screensaver                   | Off                                   | Show it in a lit room                                                    |
+| Screensaver name                       | Home Screensaver                      | Its name in Kiosk Satellite's screensaver list                           |
+| Room (area ID)                         | empty                                 | Home Assistant area whose lights and climate show, such as `living_room` |
+| Garage door                            | empty                                 | A cover entity for the garage chip                                       |
+| Alarm                                  | empty                                 | An alarm panel entity for the alarm chip                                 |
+| Preferred room sensors (optional)      | empty                                 | Words to look for first in room sensor IDs                               |
+| Photo list                             | `/local/screensaver/photo_index.json` | Where the photo list file is                                             |
+| Each photo for                         | 30 s                                  | How long each photo shows                                                |
+| Photos in a row                        | 1                                     | 1 = every photo at random. More = that many from one random spot         |
+| Dark room below                        | 2 lx                                  | Below this, the tablet's own screensaver shows                           |
+| Home Assistant address (optional)      | empty                                 | Leave empty to use Kiosk Satellite's                                     |
+| Use the sky screensaver in a dark room | Off                                   | See below                                                                |
+| Soft gray text                         | Off                                   | Gray text and dimmer colors, for OLED screens                            |
+| Weather                                | empty                                 | Weather entity for the sky screensaver                                   |
+| Moon images (optional)                 | empty                                 | Another year's NASA image address                                        |
 
 ## Sky screensaver (dark room)
 
@@ -47,11 +47,11 @@ Star data: the Yale Bright Star Catalog, 5th revised edition (Hoffleit & Warren,
 
 A bar at the top of the screen, over the dashboard and the screensaver, for the house's alerts (leak, garage open, laundry done, trash night...). It hides after 5 minutes or a tap, and comes back only for a new alert. Alerts come from an entity whose `items` attribute lists them as `{key, name, color}`; `color` is a color name such as Orange or Blue, and an alert with key `leak` is always red.
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| Show alert banner | On | Turns the banner on or off |
-| Alerts | empty | The entity that lists the alerts |
-| Hide banner after | 5 min | How long it stays up |
+| Setting           | Default | Meaning                          |
+| ----------------- | ------- | -------------------------------- |
+| Show alert banner | On      | Turns the banner on or off       |
+| Alerts            | empty   | The entity that lists the alerts |
+| Hide banner after | 5 min   | How long it stays up             |
 
 ## Auto-close
 
@@ -61,30 +61,30 @@ It only acts when Kiosk Satellite is still showing underneath and has lost focus
 
 ### Settings
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| Close windows left on top | On | Turns auto-close on or off |
-| Close after | 120 s | How long a window may stay on top (15 s to 30 min) |
+| Setting                   | Default | Meaning                                            |
+| ------------------------- | ------- | -------------------------------------------------- |
+| Close windows left on top | On      | Turns auto-close on or off                         |
+| Close after               | 120 s   | How long a window may stay on top (15 s to 30 min) |
 
 ## Touch tracking
 
 Reports when the screen was last touched, and an **In use** flag that stays on for a few minutes (5 by default) after the last touch. Only finger-down events are counted; touches pass through to Kiosk Satellite unchanged.
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| In use for | 5 min | How long In use stays on after a touch |
+| Setting    | Default | Meaning                                |
+| ---------- | ------- | -------------------------------------- |
+| In use for | 5 min   | How long In use stays on after a touch |
 
 ## Home Assistant entities (through Kiosk Satellite's ESPHome connection)
 
-| Entity | Meaning |
-| --- | --- |
-| Window on top (binary sensor) | On while another app's window covers Kiosk Satellite |
-| Auto-closes (sensor) | How many times the plugin closed a window since it started |
-| Auto-close (switch) | Same as the setting |
-| Plugin message (text sensor) | The plugin's last message, for troubleshooting |
-| Last touched (text sensor) | Time of the last touch, ISO 8601 UTC (use `as_datetime` in templates). Sent at most every 10 s |
-| In use (binary sensor) | On from a touch until the In use time passes without one |
-| Bring Kiosk Satellite to front (button) | Optional; enable it on the plugin page |
+| Entity                                  | Meaning                                                                                        |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Window on top (binary sensor)           | On while another app's window covers Kiosk Satellite                                           |
+| Auto-closes (sensor)                    | How many times the plugin closed a window since it started                                     |
+| Auto-close (switch)                     | Same as the setting                                                                            |
+| Plugin message (text sensor)            | The plugin's last message, for troubleshooting                                                 |
+| Last touched (text sensor)              | Time of the last touch, ISO 8601 UTC (use `as_datetime` in templates). Sent at most every 10 s |
+| In use (binary sensor)                  | On from a touch until the In use time passes without one                                       |
+| Bring Kiosk Satellite to front (button) | Optional; enable it on the plugin page                                                         |
 
 ## Install
 
@@ -93,7 +93,6 @@ In Kiosk Satellite: **Plugin Manager > Add plugin**, paste `https://github.com/r
 ## Build
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the plugin works.
-
 
 Pushes to `main` build a test ZIP as a GitHub Actions artifact and format the code with Prettier. Publishing a GitHub release (tag `v1.2.3`) builds and attaches the release files Kiosk Satellite installs from.
 

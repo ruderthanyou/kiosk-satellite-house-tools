@@ -28,6 +28,7 @@ import me.jxl.kiosk.plugins.PluginHost;
  * set minutes or a tap, and comes back only for an alert it hasn't shown yet.
  */
 final class AlertBanner {
+
     static final String KEY = "alert_banner";
 
     private final HouseToolsPlugin plugin;
@@ -36,7 +37,9 @@ final class AlertBanner {
     private List<Map<String, Object>> current = new ArrayList<>();
     private boolean visible;
 
-    AlertBanner(HouseToolsPlugin plugin) { this.plugin = plugin; }
+    AlertBanner(HouseToolsPlugin plugin) {
+        this.plugin = plugin;
+    }
 
     /** Main thread. */
     void update(List<Object> alerts, boolean enabled) {
@@ -49,7 +52,10 @@ final class AlertBanner {
         }
         shown.retainAll(keys); // a cleared alert can announce itself again next time
         current = list;
-        if (!enabled || list.isEmpty()) { hide(); return; }
+        if (!enabled || list.isEmpty()) {
+            hide();
+            return;
+        }
         boolean fresh = false;
         for (String k : keys) if (shown.add(k)) fresh = true;
         if (fresh) show();
@@ -60,7 +66,9 @@ final class AlertBanner {
         main.removeCallbacks(autoHide);
         if (!visible) return;
         visible = false;
-        try { plugin.host().hideOverlay(KEY); } catch (Throwable ignored) {}
+        try {
+            plugin.host().hideOverlay(KEY);
+        } catch (Throwable ignored) {}
     }
 
     private final Runnable autoHide = this::hide;
@@ -76,9 +84,16 @@ final class AlertBanner {
             } catch (LinkageError older) {
                 spec = spec.onTop(true);
             }
-            host.showOverlay(KEY, spec, new OverlayFactory() {
-                @Override public View create(Context context, KsTheme theme) { return build(context, theme, alerts); }
-            });
+            host.showOverlay(
+                KEY,
+                spec,
+                new OverlayFactory() {
+                    @Override
+                    public View create(Context context, KsTheme theme) {
+                        return build(context, theme, alerts);
+                    }
+                }
+            );
             visible = true;
         } catch (Throwable error) {
             plugin.log("Alert banner: " + error);
@@ -127,12 +142,17 @@ final class AlertBanner {
         dismiss.setText("Tap to hide");
         theme.styleText(dismiss, 13, 400, "onSurface");
         dismiss.setTextColor(0x99F5F7FA);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
         p.leftMargin = theme.px(16);
         bar.addView(dismiss, p);
 
         bar.setOnClickListener(v -> {
-            try { hide(); } catch (Throwable ignored) {}
+            try {
+                hide();
+            } catch (Throwable ignored) {}
         });
         return bar;
     }
@@ -146,20 +166,34 @@ final class AlertBanner {
     static int colorFor(Map<String, Object> alert) {
         if ("leak".equals(Net.str(alert.get("key")))) return 0xFFE53935;
         switch (Net.str(alert.get("color")).toLowerCase(Locale.US)) {
-            case "red": return 0xFFE53935;
-            case "orange": return 0xFFFB8C00;
-            case "lemon": return 0xFFFDD835;
-            case "lime": return 0xFFC0CA33;
-            case "green": return 0xFF43A047;
-            case "teal": return 0xFF00897B;
-            case "cyan": return 0xFF00ACC1;
-            case "aqua": return 0xFF26C6DA;
-            case "blue": return 0xFF1E88E5;
-            case "violet": return 0xFF8E24AA;
-            case "magenta": return 0xFFD81B60;
-            case "pink": return 0xFFEC407A;
-            case "white": return 0xFFECEFF1;
-            default: return 0xFFFB8C00;
+            case "red":
+                return 0xFFE53935;
+            case "orange":
+                return 0xFFFB8C00;
+            case "lemon":
+                return 0xFFFDD835;
+            case "lime":
+                return 0xFFC0CA33;
+            case "green":
+                return 0xFF43A047;
+            case "teal":
+                return 0xFF00897B;
+            case "cyan":
+                return 0xFF00ACC1;
+            case "aqua":
+                return 0xFF26C6DA;
+            case "blue":
+                return 0xFF1E88E5;
+            case "violet":
+                return 0xFF8E24AA;
+            case "magenta":
+                return 0xFFD81B60;
+            case "pink":
+                return 0xFFEC407A;
+            case "white":
+                return 0xFFECEFF1;
+            default:
+                return 0xFFFB8C00;
         }
     }
 }

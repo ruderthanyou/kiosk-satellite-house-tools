@@ -60,16 +60,17 @@ import me.jxl.kiosk.plugins.PluginHost;
  * NASA moon image, the star catalog), which run on {@link #worker} and post their results back.
  */
 final class Screensaver implements OverlayFactory {
+
     static final String KEY = "home";
 
-    private static final int CHIP = 0xD91C1D21;      // Weather Mood style dark pill
+    private static final int CHIP = 0xD91C1D21; // Weather Mood style dark pill
     private static final int NAVY = CHIP;
     private static final int NAVY_SOFT = CHIP;
-    private static final int AMBER = 0xFFF2B33D;     // light on
+    private static final int AMBER = 0xFFF2B33D; // light on
     private static final int ORANGE = 0xFFFB8C00;
     private static final int RED = 0xFFE53935;
     private static final int GREEN = 0xFF43A047;
-    private int TEXT = 0xFFF5F7FA;          // soft gray (OLED care) or near-white, set when the view is made
+    private int TEXT = 0xFFF5F7FA; // soft gray (OLED care) or near-white, set when the view is made
     private int TEXT_SOFT_E6 = 0xE6F5F7FA, TEXT_SOFT_CC = 0xCCF5F7FA;
     private static final int TEXT_DIM = 0xB3F5F7FA;
 
@@ -85,7 +86,7 @@ final class Screensaver implements OverlayFactory {
     private int nextIndex = -1;
     private int leftInBlock;
     private final List<String> history = new ArrayList<>(); // names shown, oldest first (worker thread)
-    private final List<String> deck = new ArrayList<>();    // shuffled photos not shown yet (worker thread)
+    private final List<String> deck = new ArrayList<>(); // shuffled photos not shown yet (worker thread)
     private int historyPos = -1;
 
     // Current view (main thread)
@@ -93,11 +94,14 @@ final class Screensaver implements OverlayFactory {
     private boolean dark;
     private final Map<String, Bitmap> avatars = new HashMap<>();
 
-    Screensaver(HouseToolsPlugin plugin) { this.plugin = plugin; }
+    Screensaver(HouseToolsPlugin plugin) {
+        this.plugin = plugin;
+    }
 
     // ----- OverlayFactory (main thread) -----
 
-    @Override public View create(Context context, KsTheme theme) {
+    @Override
+    public View create(Context context, KsTheme theme) {
         boolean soft = plugin.softText();
         TEXT = soft ? 0xFFAAAAAA : 0xFFF5F7FA;
         TEXT_SOFT_E6 = soft ? 0xE6AAAAAA : 0xE6F5F7FA;
@@ -111,7 +115,8 @@ final class Screensaver implements OverlayFactory {
         return view;
     }
 
-    @Override public void onDestroy(View destroyed) {
+    @Override
+    public void onDestroy(View destroyed) {
         if (destroyed == view) view = null;
         main.removeCallbacksAndMessages(null);
         ExecutorService w = worker;
@@ -121,12 +126,20 @@ final class Screensaver implements OverlayFactory {
 
     // ----- Called by the plugin (any thread) -----
 
-    void dataChanged() { main.post(() -> { if (view != null) applyData(plugin.data()); }); }
+    void dataChanged() {
+        main.post(() -> {
+            if (view != null) applyData(plugin.data());
+        });
+    }
 
-    void darkChanged(boolean isDark) { main.post(() -> setDark(isDark)); }
+    void darkChanged(boolean isDark) {
+        main.post(() -> setDark(isDark));
+    }
 
     void shutdown() {
-        main.post(() -> { if (view != null) onDestroy(view); });
+        main.post(() -> {
+            if (view != null) onDestroy(view);
+        });
     }
 
     // ----- Photos -----
@@ -147,10 +160,14 @@ final class Screensaver implements OverlayFactory {
     }
 
     private final Runnable nextPhoto = new Runnable() {
-        @Override public void run() {
+        @Override
+        public void run() {
             if (view == null) return;
             long interval = plugin.photoSeconds() * 1000L;
-            if (dark) { scheduleNextPhoto(interval); return; } // no photos in a dark room
+            if (dark) {
+                scheduleNextPhoto(interval);
+                return;
+            } // no photos in a dark room
             ExecutorService w = worker;
             if (w == null) return;
             DisplayMetrics metrics = view.getResources().getDisplayMetrics();
@@ -175,9 +192,14 @@ final class Screensaver implements OverlayFactory {
     private void loadPhoto(int width, int height, int direction) {
         try {
             String base = plugin.haUrl();
-            if (base.isEmpty()) { plugin.log("Photo: Home Assistant address not known yet"); return; }
+            if (base.isEmpty()) {
+                plugin.log("Photo: Home Assistant address not known yet");
+                return;
+            }
             if (photos.isEmpty() || System.currentTimeMillis() - photosLoadedAt > 6 * 3600_000L) {
-                Map<String, Object> index = Net.map(Net.plain(new String(Net.get(base + plugin.photoIndexPath(), 2_000_000), "UTF-8")));
+                Map<String, Object> index = Net.map(
+                    Net.plain(new String(Net.get(base + plugin.photoIndexPath(), 2_000_000), "UTF-8"))
+                );
                 List<String> names = new ArrayList<>();
                 for (Object name : Net.list(index.get("photos"))) names.add(Net.str(name));
                 photos = names;
@@ -225,7 +247,9 @@ final class Screensaver implements OverlayFactory {
             byte[] bytes = Net.get(url, 40_000_000);
             Bitmap bitmap = Net.decode(bytes, width / 2, height / 2, false);
             if (bitmap == null) return;
-            main.post(() -> { if (view != null) view.showPhoto(bitmap); });
+            main.post(() -> {
+                if (view != null) view.showPhoto(bitmap);
+            });
         } catch (InterruptedException stopped) {
             Thread.currentThread().interrupt();
         } catch (Throwable error) {
@@ -238,11 +262,19 @@ final class Screensaver implements OverlayFactory {
     private void applyData(Map<String, Object> data) {
         if (view == null || data == null) return;
         view.setPeople(Net.list(data.get("people")));
-        view.setStatus(Net.str(data.get("garage")), Net.str(data.get("alarm")), Net.list(data.get("alerts")), Net.map(data.get("climate")));
+        view.setStatus(
+            Net.str(data.get("garage")),
+            Net.str(data.get("alarm")),
+            Net.list(data.get("alerts")),
+            Net.map(data.get("climate"))
+        );
         view.setLights(Net.str(data.get("area")), Net.list(data.get("lights")));
         Object sun = data.get("sun");
         Object lat = data.get("lat"), lon = data.get("lon");
-        if (lat instanceof Number && lon instanceof Number) view.sky.setLocation(((Number) lat).doubleValue(), ((Number) lon).doubleValue());
+        if (lat instanceof Number && lon instanceof Number) view.sky.setLocation(
+            ((Number) lat).doubleValue(),
+            ((Number) lon).doubleValue()
+        );
         Object azimuth = data.get("sun_az");
         if (azimuth instanceof Number) view.sky.setSunAzimuth(((Number) azimuth).doubleValue());
         view.setWeather(Net.map(data.get("weather")), sun instanceof Number ? ((Number) sun).doubleValue() : -30);
@@ -253,7 +285,8 @@ final class Screensaver implements OverlayFactory {
     private String moonLoaded = "", moonLoading = "";
 
     private final Runnable tick = new Runnable() {
-        @Override public void run() {
+        @Override
+        public void run() {
             if (view == null) return;
             view.updateClock();
             if (view.nightShown()) {
@@ -262,29 +295,45 @@ final class Screensaver implements OverlayFactory {
             }
             plugin.refreshForecast();
             long now = System.currentTimeMillis();
-            main.postDelayed(this, 1000 - now % 1000 + 20);
+            main.postDelayed(this, 1000 - (now % 1000) + 20);
         }
     };
 
     private static float[][] stars; // loaded once from assets/stars.csv
 
     private void loadStars() {
-        if (stars != null) { view.sky.setStars(stars[0], stars[1], stars[2], stars[3]); return; }
+        if (stars != null) {
+            view.sky.setStars(stars[0], stars[1], stars[2], stars[3]);
+            return;
+        }
         ExecutorService w = worker;
         if (w == null) return;
         w.execute(() -> {
-            try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(plugin.openAsset("stars.csv"), "UTF-8"))) {
+            try (
+                java.io.BufferedReader in = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(plugin.openAsset("stars.csv"), "UTF-8")
+                )
+            ) {
                 List<float[]> rows = new ArrayList<>();
                 String line;
                 while ((line = in.readLine()) != null) {
                     if (line.startsWith("#") || line.trim().isEmpty()) continue;
                     String[] f = line.split(",");
-                    rows.add(new float[] {Float.parseFloat(f[0]), Float.parseFloat(f[1]), Float.parseFloat(f[2]), Float.parseFloat(f[3])});
+                    rows.add(
+                        new float[] {
+                            Float.parseFloat(f[0]),
+                            Float.parseFloat(f[1]),
+                            Float.parseFloat(f[2]),
+                            Float.parseFloat(f[3]),
+                        }
+                    );
                 }
                 float[][] cat = new float[4][rows.size()];
                 for (int i = 0; i < rows.size(); i++) for (int k = 0; k < 4; k++) cat[k][i] = rows.get(i)[k];
                 stars = cat;
-                main.post(() -> { if (view != null) view.sky.setStars(cat[0], cat[1], cat[2], cat[3]); });
+                main.post(() -> {
+                    if (view != null) view.sky.setStars(cat[0], cat[1], cat[2], cat[3]);
+                });
             } catch (Throwable error) {
                 plugin.log("Stars: " + error);
             }
@@ -314,7 +363,10 @@ final class Screensaver implements OverlayFactory {
 
     private void loadAvatar(String url, CircleImage target) {
         Bitmap cached = avatars.get(url);
-        if (cached != null) { target.setBitmap(cached); return; }
+        if (cached != null) {
+            target.setBitmap(cached);
+            return;
+        }
         ExecutorService w = worker;
         if (w == null || url.isEmpty()) return;
         String full = url.startsWith("http") ? url : plugin.haUrl() + url;
@@ -322,7 +374,10 @@ final class Screensaver implements OverlayFactory {
             try {
                 Bitmap bitmap = Net.decode(Net.get(full, 5_000_000), 128, 128, true);
                 if (bitmap == null) return;
-                main.post(() -> { avatars.put(url, bitmap); target.setBitmap(bitmap); });
+                main.post(() -> {
+                    avatars.put(url, bitmap);
+                    target.setBitmap(bitmap);
+                });
             } catch (Throwable error) {
                 plugin.log("Face picture: " + error.getMessage());
             }
@@ -333,6 +388,7 @@ final class Screensaver implements OverlayFactory {
 
     /** Round picture, grayed out when the person is away. */
     private static final class CircleImage extends View {
+
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
         private Bitmap bitmap;
@@ -344,12 +400,21 @@ final class Screensaver implements OverlayFactory {
             ring.setStyle(Paint.Style.STROKE);
         }
 
-        @Override protected void onMeasure(int widthSpec, int heightSpec) {
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
             setMeasuredDimension(getSuggestedMinimumWidth(), getSuggestedMinimumHeight());
         }
 
-        void setBitmap(Bitmap b) { bitmap = b; invalidate(); }
-        void setInitial(String s) { initial = s; invalidate(); }
+        void setBitmap(Bitmap b) {
+            bitmap = b;
+            invalidate();
+        }
+
+        void setInitial(String s) {
+            initial = s;
+            invalidate();
+        }
+
         void setAway(boolean a) {
             away = a;
             if (a) {
@@ -363,7 +428,8 @@ final class Screensaver implements OverlayFactory {
             invalidate();
         }
 
-        @Override protected void onDraw(Canvas canvas) {
+        @Override
+        protected void onDraw(Canvas canvas) {
             float size = Math.min(getWidth(), getHeight());
             float r = size / 2f;
             float stroke = size * 0.06f;
@@ -394,12 +460,13 @@ final class Screensaver implements OverlayFactory {
     }
 
     private final class Root extends FrameLayout {
+
         private final KsTheme theme;
         private PhotoView back, front;
         private final View scrim;
         private final FlowRow topRow, lightsRow; // faces + status chips; this room's lights
-        private final LinearLayout content;       // the photo screen's chips column
-        private final FrameLayout nightLayer;     // the dark-room screen: sky, clock, weather
+        private final LinearLayout content; // the photo screen's chips column
+        private final FrameLayout nightLayer; // the dark-room screen: sky, clock, weather
         final SkyView sky;
         private final TextView clock, date;
         private final LinearLayout wxLeft, wxRight;
@@ -419,7 +486,9 @@ final class Screensaver implements OverlayFactory {
             addView(front, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
             scrim = new View(context);
-            scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[] {0xCC000000, 0x00000000}));
+            scrim.setBackground(
+                new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, new int[] { 0xCC000000, 0x00000000 })
+            );
             LayoutParams scrimParams = new LayoutParams(LayoutParams.MATCH_PARENT, dp(220));
             scrimParams.gravity = Gravity.BOTTOM;
             addView(scrim, scrimParams);
@@ -429,7 +498,7 @@ final class Screensaver implements OverlayFactory {
             column.setGravity(Gravity.CENTER_HORIZONTAL);
             LayoutParams columnParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
             columnParams.gravity = Gravity.BOTTOM;
-            columnParams.bottomMargin = dp(96);   // clear of the bottom corner widgets (clock, dew point)
+            columnParams.bottomMargin = dp(96); // clear of the bottom corner widgets (clock, dew point)
             columnParams.leftMargin = dp(32);
             columnParams.rightMargin = dp(32);
             addView(column, columnParams);
@@ -508,9 +577,18 @@ final class Screensaver implements OverlayFactory {
             addView(nightLayer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
             topRow = new FlowRow(context, dp(8), dp(8));
-            column.addView(topRow, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            column.addView(
+                topRow,
+                new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            );
             lightsRow = new FlowRow(context, dp(8), dp(8));
-            LinearLayout.LayoutParams lightsParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            LinearLayout.LayoutParams lightsParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            );
             lightsParams.topMargin = dp(10);
             column.addView(lightsRow, lightsParams);
 
@@ -519,30 +597,43 @@ final class Screensaver implements OverlayFactory {
             hint.setVisibility(View.GONE); // everyone knows: middle closes, sides change photos
             theme.styleText(hint, 12, 400, "onSurface");
             hint.setTextColor(TEXT_DIM);
-            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            );
             hintParams.topMargin = dp(10);
             column.addView(hint, hintParams);
 
             // Taps on the photo itself: right third = next, left third = previous, middle = close.
             // Acts on the tap at once; chips handle their own taps.
-            GestureDetector taps = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
-                @Override public boolean onDown(MotionEvent e) { return true; }
-                @Override public boolean onSingleTapUp(MotionEvent e) {
-                    try {
-                        float third = getWidth() / 3f;
-                        if (e.getX() > 2 * third) step(1);
-                        else if (e.getX() < third) step(-1);
-                        else plugin.closeScreensaver();
-                    } catch (Throwable error) {
-                        plugin.log("Photo tap: " + error);
+            GestureDetector taps = new GestureDetector(
+                context,
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDown(MotionEvent e) {
+                        return true;
                     }
-                    return true;
+
+                    @Override
+                    public boolean onSingleTapUp(MotionEvent e) {
+                        try {
+                            float third = getWidth() / 3f;
+                            if (e.getX() > 2 * third) step(1);
+                            else if (e.getX() < third) step(-1);
+                            else plugin.closeScreensaver();
+                        } catch (Throwable error) {
+                            plugin.log("Photo tap: " + error);
+                        }
+                        return true;
+                    }
                 }
-            });
+            );
             setOnTouchListener((v, e) -> taps.onTouchEvent(e));
         }
 
-        int dp(float v) { return theme.px(v); }
+        int dp(float v) {
+            return theme.px(v);
+        }
 
         /**
          * Sizes for the corners, measured on Kiosk Satellite's own widgets in a screenshot 800 pixels tall, scaled
@@ -550,7 +641,7 @@ final class Screensaver implements OverlayFactory {
          */
         float ref(float px) {
             android.util.DisplayMetrics m = getResources().getDisplayMetrics();
-            return px * Math.min(m.widthPixels, m.heightPixels) / 800f;
+            return (px * Math.min(m.widthPixels, m.heightPixels)) / 800f;
         }
 
         private TextView cornerText(Context context, float refPx, int weight) {
@@ -572,7 +663,9 @@ final class Screensaver implements OverlayFactory {
             return row;
         }
 
-        boolean nightShown() { return nightLayer.getVisibility() == VISIBLE; }
+        boolean nightShown() {
+            return nightLayer.getVisibility() == VISIBLE;
+        }
 
         private TextView shadowed(Context context, float sp, int weight) {
             TextView t = new TextView(context);
@@ -608,22 +701,45 @@ final class Screensaver implements OverlayFactory {
             {
                 String u = Net.str(w.get("unit")).replace("°", "");
                 Object tt = w.get("temp");
-                if (tt instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) tt).doubleValue()) + "°" + u, conditionIcon(state), 56, 52, conditionColor(state), 300));
+                if (tt instanceof Number) dayWeather.addView(
+                    iconLine(
+                        Math.round(((Number) tt).doubleValue()) + "°" + u,
+                        conditionIcon(state),
+                        56,
+                        52,
+                        conditionColor(state),
+                        300
+                    )
+                );
                 dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 27, 22, TEXT, 300));
                 Double h = plugin.forecastHigh(), l = plugin.forecastLow();
-                if (h != null && l != null) dayWeather.addView(iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 27, 22, TEXT, 300));
+                if (h != null && l != null) dayWeather.addView(
+                    iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 27, 22, TEXT, 300)
+                );
                 Object ws = w.get("wind");
-                if (ws instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) ws).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", 27, 22, TEXT, 300));
+                if (ws instanceof Number) dayWeather.addView(
+                    iconLine(
+                        Math.round(((Number) ws).doubleValue()) + " " + Net.str(w.get("wind_unit")),
+                        "mdi:weather-windy",
+                        27,
+                        22,
+                        TEXT,
+                        300
+                    )
+                );
                 Object dew = w.get("dew"), hum = w.get("hum");
                 if (dew instanceof Number) {
                     double d = ((Number) dew).doubleValue();
                     boolean celsius = u.toUpperCase(java.util.Locale.US).contains("C");
-                    int color = dewColor(celsius ? d * 9 / 5 + 32 : d);
+                    int color = dewColor(celsius ? (d * 9) / 5 + 32 : d);
                     if (plugin.softText()) color = dim(color, 0.7f);
                     dewValue.setText(Math.round(d) + " °" + u);
                     dewValue.setTextColor(color);
                     setLeftIcon(dewValue, "mdi:water-thermometer", 30, color);
-                    dewLabel.setText("Dew point" + (hum instanceof Number ? " · " + Math.round(((Number) hum).doubleValue()) + "% humidity" : ""));
+                    dewLabel.setText(
+                        "Dew point" +
+                        (hum instanceof Number ? " · " + Math.round(((Number) hum).doubleValue()) + "% humidity" : "")
+                    );
                     dewBox.setVisibility(nightShown() ? GONE : VISIBLE);
                 }
             }
@@ -632,11 +748,22 @@ final class Screensaver implements OverlayFactory {
             String t = temp instanceof Number ? Math.round(((Number) temp).doubleValue()) + "°" + unit + "  " : "";
             wxLeft.addView(chip(t + conditionName(state), conditionIcon(state), CHIP, TEXT));
             Double hi = plugin.forecastHigh(), lo = plugin.forecastLow();
-            if (hi != null && lo != null) addRight(chip(Math.round(hi) + "° / " + Math.round(lo) + "°", "mdi:thermometer", CHIP, TEXT));
+            if (hi != null && lo != null) addRight(
+                chip(Math.round(hi) + "° / " + Math.round(lo) + "°", "mdi:thermometer", CHIP, TEXT)
+            );
             Object hum = w.get("hum");
-            if (hum instanceof Number) addRight(chip(Math.round(((Number) hum).doubleValue()) + "%", "mdi:water-outline", CHIP, TEXT));
+            if (hum instanceof Number) addRight(
+                chip(Math.round(((Number) hum).doubleValue()) + "%", "mdi:water-outline", CHIP, TEXT)
+            );
             Object wind = w.get("wind");
-            if (wind instanceof Number) addRight(chip(Math.round(((Number) wind).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", CHIP, TEXT));
+            if (wind instanceof Number) addRight(
+                chip(
+                    Math.round(((Number) wind).doubleValue()) + " " + Net.str(w.get("wind_unit")),
+                    "mdi:weather-windy",
+                    CHIP,
+                    TEXT
+                )
+            );
         }
 
         /** "56°F" with an icon after it, right-aligned: one line of the weather corner. */
@@ -671,7 +798,10 @@ final class Screensaver implements OverlayFactory {
         }
 
         private void addRight(View chip) {
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            );
             if (wxRight.getChildCount() > 0) params.leftMargin = dp(10);
             wxRight.addView(chip, params);
         }
@@ -775,29 +905,50 @@ final class Screensaver implements OverlayFactory {
             status.clear();
             Object temp = climate.get("temp"), hum = climate.get("hum");
             if (temp instanceof Number) {
-                String text = "Inside " + ((Number) temp).intValue() + "°" + (hum instanceof Number ? "  ·  " + ((Number) hum).intValue() + "%" : "");
+                String text =
+                    "Inside " +
+                    ((Number) temp).intValue() +
+                    "°" +
+                    (hum instanceof Number ? "  ·  " + ((Number) hum).intValue() + "%" : "");
                 status.add(chip(text, "mdi:home-thermometer-outline", CHIP, TEXT));
             }
             String mode = Net.str(climate.get("mode"));
             Object target = climate.get("target");
             if (!mode.isEmpty() && !"off".equals(mode) && !"unavailable".equals(mode) && target instanceof Number) {
                 String action = Net.str(climate.get("action"));
-                String verb = "heating".equals(action) ? "Heating to " : "cooling".equals(action) ? "Cooling to " : capital(mode.replace("_", " ")) + " ";
+                String verb = "heating".equals(action)
+                    ? "Heating to "
+                    : "cooling".equals(action) ? "Cooling to " : capital(mode.replace("_", " ")) + " ";
                 int color = "heating".equals(action) ? 0xFFE65100 : "cooling".equals(action) ? 0xFF1565C0 : CHIP;
-                status.add(chip(verb + Math.round(((Number) target).doubleValue()) + "°", "mdi:thermostat", color, TEXT));
+                status.add(
+                    chip(verb + Math.round(((Number) target).doubleValue()) + "°", "mdi:thermostat", color, TEXT)
+                );
             }
             boolean garageOpen = "open".equals(garage) || "opening".equals(garage);
             if (!garage.isEmpty()) {
-                status.add(chip(garageOpen ? "Garage open" : "Garage closed",
-                    garageOpen ? "mdi:garage-open-variant" : "mdi:garage-variant",
-                    garageOpen ? ORANGE : CHIP, garageOpen ? 0xFF1A1A1A : TEXT));
+                status.add(
+                    chip(
+                        garageOpen ? "Garage open" : "Garage closed",
+                        garageOpen ? "mdi:garage-open-variant" : "mdi:garage-variant",
+                        garageOpen ? ORANGE : CHIP,
+                        garageOpen ? 0xFF1A1A1A : TEXT
+                    )
+                );
             }
             if (!alarm.isEmpty() && !"unavailable".equals(alarm) && !"unknown".equals(alarm)) {
                 boolean armed = alarm.startsWith("armed");
                 boolean alert = "triggered".equals(alarm) || "pending".equals(alarm) || "arming".equals(alarm);
-                String label = "triggered".equals(alarm) ? "Alarm!" : armed ? "Alarm " + alarm.replace("armed_", "").replace('_', ' ') : "Alarm off";
-                status.add(chip(label, armed || alert ? "mdi:shield-lock" : "mdi:shield-off-outline",
-                    alert ? RED : armed ? GREEN : CHIP, TEXT));
+                String label = "triggered".equals(alarm)
+                    ? "Alarm!"
+                    : armed ? "Alarm " + alarm.replace("armed_", "").replace('_', ' ') : "Alarm off";
+                status.add(
+                    chip(
+                        label,
+                        armed || alert ? "mdi:shield-lock" : "mdi:shield-off-outline",
+                        alert ? RED : armed ? GREEN : CHIP,
+                        TEXT
+                    )
+                );
             }
             if (!alerts.isEmpty()) {
                 String first = Net.str(Net.map(alerts.get(0)).get("name"));
@@ -816,8 +967,12 @@ final class Screensaver implements OverlayFactory {
                 String name = shortName(Net.str(l.get("name")), area);
                 boolean on = Boolean.TRUE.equals(l.get("on"));
                 boolean unavailable = Boolean.TRUE.equals(l.get("off_line"));
-                TextView chip = chip(name, on ? "mdi:lightbulb-on" : "mdi:lightbulb-outline",
-                    on ? AMBER : NAVY, on ? 0xFF1A1A1A : TEXT);
+                TextView chip = chip(
+                    name,
+                    on ? "mdi:lightbulb-on" : "mdi:lightbulb-outline",
+                    on ? AMBER : NAVY,
+                    on ? 0xFF1A1A1A : TEXT
+                );
                 if (unavailable) chip.setAlpha(0.45f);
                 chip.setOnClickListener(v -> {
                     try {
@@ -848,18 +1003,22 @@ final class Screensaver implements OverlayFactory {
      * the way Kiosk Satellite's photo screensaver shows it. The blur is a tiny copy scaled up with filtering.
      */
     private static final class PhotoView extends View {
+
         private Bitmap photo, blur;
         private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
         private final Paint shade = new Paint();
         private final Matrix matrix = new Matrix();
 
-        PhotoView(Context context) { super(context); shade.setColor(0x8C000000); }
+        PhotoView(Context context) {
+            super(context);
+            shade.setColor(0x8C000000);
+        }
 
         void setPhoto(Bitmap b) {
             photo = b;
             blur = null;
             if (b != null) {
-                int w = 24, h = Math.max(1, Math.round(24f * b.getHeight() / b.getWidth()));
+                int w = 24, h = Math.max(1, Math.round((24f * b.getHeight()) / b.getWidth()));
                 Bitmap tiny = Bitmap.createScaledBitmap(b, w, h, true);
                 blur = Bitmap.createScaledBitmap(tiny, w * 4, h * 4, true); // a little smoother when stretched
                 if (tiny != blur) tiny.recycle();
@@ -867,7 +1026,8 @@ final class Screensaver implements OverlayFactory {
             invalidate();
         }
 
-        @Override protected void onDraw(Canvas canvas) {
+        @Override
+        protected void onDraw(Canvas canvas) {
             int w = getWidth(), h = getHeight();
             if (photo == null || w == 0 || h == 0) return;
             float cover = Math.max((float) w / blur.getWidth(), (float) h / blur.getHeight());
@@ -884,10 +1044,17 @@ final class Screensaver implements OverlayFactory {
 
     /** Lays children out left to right and wraps to a new line when full; every line is centered. */
     private static final class FlowRow extends android.view.ViewGroup {
-        private final int gapX, gapY;
-        FlowRow(Context context, int gapX, int gapY) { super(context); this.gapX = gapX; this.gapY = gapY; }
 
-        @Override protected void onMeasure(int widthSpec, int heightSpec) {
+        private final int gapX, gapY;
+
+        FlowRow(Context context, int gapX, int gapY) {
+            super(context);
+            this.gapX = gapX;
+            this.gapY = gapY;
+        }
+
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
             int max = MeasureSpec.getSize(widthSpec);
             if (MeasureSpec.getMode(widthSpec) == MeasureSpec.UNSPECIFIED) max = Integer.MAX_VALUE;
             int lineW = 0, lineH = 0, width = 0, height = 0;
@@ -897,16 +1064,24 @@ final class Screensaver implements OverlayFactory {
                 c.measure(MeasureSpec.makeMeasureSpec(max, MeasureSpec.AT_MOST), MeasureSpec.UNSPECIFIED);
                 int w = c.getMeasuredWidth(), h = c.getMeasuredHeight();
                 if (lineW > 0 && lineW + gapX + w > max) {
-                    width = Math.max(width, lineW); height += lineH + gapY; lineW = 0; lineH = 0;
+                    width = Math.max(width, lineW);
+                    height += lineH + gapY;
+                    lineW = 0;
+                    lineH = 0;
                 }
                 lineW += (lineW > 0 ? gapX : 0) + w;
                 lineH = Math.max(lineH, h);
             }
-            width = Math.max(width, lineW); height += lineH;
-            setMeasuredDimension(MeasureSpec.getMode(widthSpec) == MeasureSpec.EXACTLY ? max : Math.min(width, max), height);
+            width = Math.max(width, lineW);
+            height += lineH;
+            setMeasuredDimension(
+                MeasureSpec.getMode(widthSpec) == MeasureSpec.EXACTLY ? max : Math.min(width, max),
+                height
+            );
         }
 
-        @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        @Override
+        protected void onLayout(boolean changed, int l, int t, int r, int b) {
             int max = r - l;
             java.util.List<View> line = new ArrayList<>();
             int lineW = 0, lineH = 0, y = 0;
@@ -921,7 +1096,10 @@ final class Screensaver implements OverlayFactory {
                         v.layout(x, top, x + v.getMeasuredWidth(), top + v.getMeasuredHeight());
                         x += v.getMeasuredWidth() + gapX;
                     }
-                    y += lineH + gapY; line.clear(); lineW = 0; lineH = 0;
+                    y += lineH + gapY;
+                    line.clear();
+                    lineW = 0;
+                    lineH = 0;
                 }
                 if (c == null) break;
                 lineW += (lineW > 0 ? gapX : 0) + c.getMeasuredWidth();
@@ -933,16 +1111,22 @@ final class Screensaver implements OverlayFactory {
 
     /** An icon centered in a thin ring, like the Weather Mood buttons. */
     private static final class RingIcon extends Drawable {
+
         private final Drawable icon;
         private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final int size, iconSize;
+
         RingIcon(Drawable icon, int color, int size, int iconSize, int stroke) {
-            this.icon = icon; this.size = size; this.iconSize = iconSize;
+            this.icon = icon;
+            this.size = size;
+            this.iconSize = iconSize;
             ring.setStyle(Paint.Style.STROKE);
             ring.setStrokeWidth(stroke);
             ring.setColor((color & 0x00FFFFFF) | 0x66000000);
         }
-        @Override public void draw(Canvas canvas) {
+
+        @Override
+        public void draw(Canvas canvas) {
             android.graphics.Rect b = getBounds();
             float r = Math.min(b.width(), b.height()) / 2f;
             canvas.drawCircle(b.exactCenterX(), b.exactCenterY(), r - ring.getStrokeWidth(), ring);
@@ -950,11 +1134,32 @@ final class Screensaver implements OverlayFactory {
             icon.setBounds(l, t, l + iconSize, t + iconSize);
             icon.draw(canvas);
         }
-        @Override public int getIntrinsicWidth() { return size; }
-        @Override public int getIntrinsicHeight() { return size; }
-        @Override public void setAlpha(int alpha) { ring.setAlpha(alpha); icon.setAlpha(alpha); }
-        @Override public void setColorFilter(android.graphics.ColorFilter filter) { icon.setColorFilter(filter); }
-        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+
+        @Override
+        public int getIntrinsicWidth() {
+            return size;
+        }
+
+        @Override
+        public int getIntrinsicHeight() {
+            return size;
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            ring.setAlpha(alpha);
+            icon.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(android.graphics.ColorFilter filter) {
+            icon.setColorFilter(filter);
+        }
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
     }
 
     static int dim(int color, float f) {
@@ -976,55 +1181,98 @@ final class Screensaver implements OverlayFactory {
     /** Weather icon colors like Kiosk Satellite's colored icons. */
     static int conditionColor(String state) {
         switch (state) {
-            case "clear-night": return 0xFF8AB4F8;
-            case "sunny": return 0xFFFFC94D;
-            case "partlycloudy": return 0xFFFFD580;
-            case "rainy": case "pouring": return 0xFF64B5F6;
-            case "lightning": case "lightning-rainy": return 0xFFFFD54F;
-            case "snowy": case "snowy-rainy": return 0xFFE3F2FD;
-            default: return 0xFFCFD8DC;
+            case "clear-night":
+                return 0xFF8AB4F8;
+            case "sunny":
+                return 0xFFFFC94D;
+            case "partlycloudy":
+                return 0xFFFFD580;
+            case "rainy":
+            case "pouring":
+                return 0xFF64B5F6;
+            case "lightning":
+            case "lightning-rainy":
+                return 0xFFFFD54F;
+            case "snowy":
+            case "snowy-rainy":
+                return 0xFFE3F2FD;
+            default:
+                return 0xFFCFD8DC;
         }
     }
 
     static String conditionName(String state) {
         switch (state) {
-            case "clear-night": return "Clear night";
-            case "sunny": return "Sunny";
-            case "partlycloudy": return "Partly cloudy";
-            case "cloudy": return "Cloudy";
-            case "fog": return "Fog";
-            case "hail": return "Hail";
-            case "lightning": case "lightning-rainy": return "Storms";
-            case "pouring": return "Heavy rain";
-            case "rainy": return "Rain";
-            case "snowy": return "Snow";
-            case "snowy-rainy": return "Sleet";
-            case "windy": case "windy-variant": return "Windy";
-            case "exceptional": return "Severe";
-            default: return capital(state.replace('-', ' '));
+            case "clear-night":
+                return "Clear night";
+            case "sunny":
+                return "Sunny";
+            case "partlycloudy":
+                return "Partly cloudy";
+            case "cloudy":
+                return "Cloudy";
+            case "fog":
+                return "Fog";
+            case "hail":
+                return "Hail";
+            case "lightning":
+            case "lightning-rainy":
+                return "Storms";
+            case "pouring":
+                return "Heavy rain";
+            case "rainy":
+                return "Rain";
+            case "snowy":
+                return "Snow";
+            case "snowy-rainy":
+                return "Sleet";
+            case "windy":
+            case "windy-variant":
+                return "Windy";
+            case "exceptional":
+                return "Severe";
+            default:
+                return capital(state.replace('-', ' '));
         }
     }
 
     static String conditionIcon(String state) {
         switch (state) {
-            case "clear-night": return "mdi:weather-night";
-            case "sunny": return "mdi:weather-sunny";
-            case "partlycloudy": return "mdi:weather-partly-cloudy";
-            case "cloudy": return "mdi:weather-cloudy";
-            case "fog": return "mdi:weather-fog";
-            case "hail": return "mdi:weather-hail";
-            case "lightning": return "mdi:weather-lightning";
-            case "lightning-rainy": return "mdi:weather-lightning-rainy";
-            case "pouring": return "mdi:weather-pouring";
-            case "rainy": return "mdi:weather-rainy";
-            case "snowy": return "mdi:weather-snowy";
-            case "snowy-rainy": return "mdi:weather-snowy-rainy";
-            case "windy": case "windy-variant": return "mdi:weather-windy";
-            default: return "mdi:weather-cloudy";
+            case "clear-night":
+                return "mdi:weather-night";
+            case "sunny":
+                return "mdi:weather-sunny";
+            case "partlycloudy":
+                return "mdi:weather-partly-cloudy";
+            case "cloudy":
+                return "mdi:weather-cloudy";
+            case "fog":
+                return "mdi:weather-fog";
+            case "hail":
+                return "mdi:weather-hail";
+            case "lightning":
+                return "mdi:weather-lightning";
+            case "lightning-rainy":
+                return "mdi:weather-lightning-rainy";
+            case "pouring":
+                return "mdi:weather-pouring";
+            case "rainy":
+                return "mdi:weather-rainy";
+            case "snowy":
+                return "mdi:weather-snowy";
+            case "snowy-rainy":
+                return "mdi:weather-snowy-rainy";
+            case "windy":
+            case "windy-variant":
+                return "mdi:weather-windy";
+            default:
+                return "mdi:weather-cloudy";
         }
     }
 
-    static String capital(String s) { return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1); }
+    static String capital(String s) {
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
 
     /** "Living Room Ceiling Light" in Living Room -> "Ceiling". */
     static String shortName(String name, String area) {
@@ -1034,5 +1282,7 @@ final class Screensaver implements OverlayFactory {
         return n.isEmpty() ? name : n;
     }
 
-    static Map<String, Object> emptyData() { return new LinkedHashMap<>(); }
+    static Map<String, Object> emptyData() {
+        return new LinkedHashMap<>();
+    }
 }
