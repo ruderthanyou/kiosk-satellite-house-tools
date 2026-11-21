@@ -10,15 +10,7 @@
   "description": "Small helpers for always-on tablets. Screensaver: family photos at random with face chips, inside climate, house status and this room's lights you can tap (tap the middle to close, the sides to change photos). Alert banner: alerts as a bar at the top that hides itself after a few minutes. Auto-close: closes windows left on top, such as the Google Assistant pop-up. Touch tracking: Last touched and In use.",
   "author": "ruderthanyou",
   "license": "MIT",
-  "capabilities": [
-    "entities",
-    "overlay",
-    "screensaver",
-    "screensaver.mode",
-    "host.read",
-    "host.control",
-    "ha"
-  ],
+  "capabilities": ["entities", "overlay", "screensaver", "screensaver.mode", "host.read", "host.control", "ha"],
   "icon": "icon.png",
   "settings": [
     {
