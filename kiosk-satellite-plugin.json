@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": 1,
+  "id": "house-tools",
+  "name": "House Tools",
+  "version": "0.3.1",
+  "minAndroidSdk": 24,
+  "minAppVersion": "2026.11.14",
+  "entryClass": "io.github.ruderthanyou.housetools.HouseToolsPlugin",
+  "description": "Small helpers for always-on tablets. Screensaver: family photos at random with face chips, inside climate, house status and this room's lights you can tap (tap the middle to close, the sides to change photos). Alert banner: alerts as a bar at the top that hides itself after a few minutes. Auto-close: closes windows left on top, such as the Google Assistant pop-up. Touch tracking: Last touched and In use.",
+  "author": "ruderthanyou",
+  "license": "MIT",
+  "capabilities": [
+    "entities",
+    "overlay",
+    "screensaver",
+    "screensaver.mode",
+    "host.read",
+    "host.control",
+    "ha"
+  ],
+  "icon": "icon.png",
+  "settings": [
+    {
+      "key": "autoClose",
+      "type": "boolean",
+      "title": "Close windows left on top",
+      "default": true,
+      "group": "Auto-close",
+      "description": "Bring Kiosk Satellite back to the front when another window, such as the Google Assistant pop-up, has covered part of it for the time below."
+    },
+    {
+      "key": "autoCloseSeconds",
+      "type": "number",
+      "title": "Close after",
+      "default": 120,
+      "min": 15,
+      "max": 1800,
+      "step": 15,
+      "unit": "s",
+      "group": "Auto-close",
+      "description": "How long a window may stay on top before it is closed."
+    },
+    {
+      "key": "inUseMinutes",
+      "type": "number",
+      "title": "In use for",
+      "default": 5,
+      "min": 1,
+      "max": 60,
+      "step": 1,
+      "unit": "min",
+      "group": "Touch tracking",
+      "description": "The In use sensor stays on this long after the last touch."
+    },
+    {
+      "key": "useScreensaver",
+      "type": "boolean",
+      "title": "Use this screensaver",
+      "default": false,
+      "group": "Screensaver",
+      "description": "In a lit room, show this plugin's screensaver instead of the tablet's own. In a dark room the tablet's own shows."
+    },
+    {
+      "key": "screensaverName",
+      "type": "string",
+      "title": "Screensaver name",
+      "default": "Home Screensaver",
+      "group": "Screensaver",
+      "description": "Its name in Kiosk Satellite's screensaver list."
+    },
+    {
+      "key": "area",
+      "type": "string",
+      "title": "Room (area ID)",
+      "default": "",
+      "group": "Screensaver",
+      "description": "Home Assistant area whose lights show on the screensaver, such as living_room. Empty shows no lights."
+    },
+    {
+      "key": "garageEntity",
+      "type": "entity",
+      "title": "Garage door",
+      "default": "",
+      "group": "Screensaver",
+      "description": "A cover entity. Empty hides the garage chip."
+    },
+    {
+      "key": "alarmEntity",
+      "type": "entity",
+      "title": "Alarm",
+      "default": "",
+      "group": "Screensaver",
+      "description": "An alarm panel entity. Empty hides the alarm chip."
+    },
+    {
+      "key": "alertsEntity",
+      "type": "entity",
+      "title": "Alerts",
+      "default": "",
+      "group": "Alert banner",
+      "description": "An entity whose 'items' attribute lists the current alerts as {key, name, color}. Used by the banner and the alert chip."
+    },
+    {
+      "key": "photoIndexPath",
+      "type": "string",
+      "title": "Photo list",
+      "default": "/local/screensaver/photo_index.json",
+      "group": "Screensaver",
+      "description": "Path in Home Assistant of a JSON file {base, photos: [file names]}; base is the media path, such as /media/local/photos/."
+    },
+    {
+      "key": "photoSeconds",
+      "type": "number",
+      "title": "Each photo for",
+      "default": 30,
+      "min": 10,
+      "max": 600,
+      "step": 5,
+      "unit": "s",
+      "group": "Screensaver",
+      "description": "How long each photo shows."
+    },
+    {
+      "key": "photoBlock",
+      "type": "number",
+      "title": "Photos in a row",
+      "default": 1,
+      "min": 1,
+      "max": 50,
+      "step": 1,
+      "group": "Screensaver",
+      "description": "1 = every photo at random (all photos once before any repeats). More than 1 = that many from one random spot, then another spot."
+    },
+    {
+      "key": "nightLux",
+      "type": "number",
+      "title": "Dark room below",
+      "default": 2,
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "lx",
+      "group": "Screensaver",
+      "description": "Below this light level the tablet goes back to its own night screensaver (Weather Mood)."
+    },
+    {
+      "key": "haUrl",
+      "type": "string",
+      "title": "Home Assistant address (optional)",
+      "default": "",
+      "group": "Screensaver",
+      "description": "Leave empty to use Kiosk Satellite's own Home Assistant address. Photos and face pictures are downloaded from it."
+    },
+    {
+      "key": "alertBanner",
+      "type": "boolean",
+      "title": "Show alert banner",
+      "default": true,
+      "group": "Alert banner",
+      "description": "A bar at the top of the screen for the alerts the switch LEDs show."
+    },
+    {
+      "key": "alertMinutes",
+      "type": "number",
+      "title": "Hide banner after",
+      "default": 5,
+      "min": 1,
+      "max": 60,
+      "step": 1,
+      "unit": "min",
+      "group": "Alert banner",
+      "description": "The banner hides itself after this long, or when tapped. A new alert brings it back."
+    }
+  ],
+  "commands": [
+    {
+      "id": "bringToFront",
+      "title": "Bring Kiosk Satellite to front"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+# House Tools for Kiosk Satellite
+
+Small helpers for tablets running [Kiosk Satellite](https://github.com/jxlarrea/kiosk-satellite).
+
+## Screensaver
+
+A screensaver for a lit room, shown under the name you choose (Home Screensaver by default). In a dark room (below 2 lux by default) the plugin steps aside and the tablet's own screensaver shows, such as Weather Mood.
+
+- Family photos at random from a Home Assistant media folder, every photo once before any repeats. Bursts are left out of the list, so the same moment rarely shows twice.
+- Tap the right side for the next photo and the left side for the previous one. Tap the middle to close. A double tap also closes it.
+- Chips in the style of Weather Mood's buttons: faces (gray when away), **Inside** temperature and humidity for the room, the thermostat when it's on, the garage door, the alarm and any alert.
+- This room's lights as buttons. Tap one to switch it. When a light group exists, its numbered bulbs are left out.
+- The rows wrap instead of cutting off. Kiosk Satellite's corner widgets (clock, Outside weather, dew point), Now Playing card and pixel shift all work on top of it.
+
+Home Assistant's address comes from Kiosk Satellite, so there's nothing to set for it. Photos come from a list file in Home Assistant's `www` folder: `{"base": "/media/local/photos/", "photos": ["a.jpg", ...]}`. Each photo is downloaded through a signed Home Assistant link, so the photos themselves stay private.
+
+The room's temperature and humidity come from a sensor in the room's area whose ID ends in `_climate_sensor_temperature`/`_humidity`, then `_thermostat_...`, then `_airthing_...`.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Use this screensaver | Off | Show it in a lit room |
+| Screensaver name | Home Screensaver | Its name in Kiosk Satellite's screensaver list |
+| Room (area ID) | empty | Home Assistant area whose lights and climate show, such as `living_room` |
+| Garage door | empty | A cover entity for the garage chip |
+| Alarm | empty | An alarm panel entity for the alarm chip |
+| Photo list | `/local/screensaver/photo_index.json` | Where the photo list file is |
+| Each photo for | 30 s | How long each photo shows |
+| Photos in a row | 1 | 1 = every photo at random. More = that many from one random spot |
+| Dark room below | 2 lx | Below this, the tablet's own screensaver shows |
+| Home Assistant address (optional) | empty | Leave empty to use Kiosk Satellite's |
+
+## Alert banner
+
+A bar at the top of the screen, over the dashboard and the screensaver, for the house's alerts (leak, garage open, laundry done, trash night...). It hides after 5 minutes or a tap, and comes back only for a new alert. Alerts come from an entity whose `items` attribute lists them as `{key, name, color}`; `color` is a color name such as Orange or Blue, and an alert with key `leak` is always red.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Show alert banner | On | Turns the banner on or off |
+| Alerts | empty | The entity that lists the alerts |
+| Hide banner after | 5 min | How long it stays up |
+
+## Auto-close
+
+When a window from another app stays on top of Kiosk Satellite, such as the Google Assistant pop-up after "Hey Google", the plugin brings Kiosk Satellite back to the front after a set time (2 minutes by default). That closes the window.
+
+It only acts when Kiosk Satellite is still showing underneath and has lost focus. Full-screen apps you open on purpose are left alone. Kiosk Satellite's own return-home setting handles those. It also does nothing while the screen is off.
+
+### Settings
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Close windows left on top | On | Turns auto-close on or off |
+| Close after | 120 s | How long a window may stay on top (15 s to 30 min) |
+
+## Touch tracking
+
+Reports when the screen was last touched, and an **In use** flag that stays on for a few minutes (5 by default) after the last touch. Only finger-down events are counted; touches pass through to Kiosk Satellite unchanged.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| In use for | 5 min | How long In use stays on after a touch |
+
+## Home Assistant entities (through Kiosk Satellite's ESPHome connection)
+
+| Entity | Meaning |
+| --- | --- |
+| Window on top (binary sensor) | On while another app's window covers Kiosk Satellite |
+| Auto-closes (sensor) | How many times the plugin closed a window since it started |
+| Auto-close (switch) | Same as the setting |
+| Plugin message (text sensor) | The plugin's last message, for troubleshooting |
+| Last touched (text sensor) | Time of the last touch, ISO 8601 UTC (use `as_datetime` in templates). Sent at most every 10 s |
+| In use (binary sensor) | On from a touch until the In use time passes without one |
+| Bring Kiosk Satellite to front (button) | Optional; enable it on the plugin page |
+
+## Install
+
+In Kiosk Satellite: **Plugin Manager > Add plugin**, paste `https://github.com/ruderthanyou/kiosk-satellite-house-tools`, preview, install, then enable it.
+
+## Build
+
+Pushes to `main` build a test ZIP as a GitHub Actions artifact. Publishing a GitHub release (tag `v1.2.3`) builds and attaches the release files Kiosk Satellite installs from.
+
+## License
+
+MIT. The SDK under `sdk/` is Apache-2.0 from the Kiosk Satellite plugin template.
