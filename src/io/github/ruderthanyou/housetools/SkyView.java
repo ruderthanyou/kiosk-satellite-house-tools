@@ -126,7 +126,10 @@ final class SkyView extends View {
             }
         }
 
-        // Moon at night (top right), sun glow by day.
+        // Moon at night (top right), sun glow by day. Reset the paint: the stars left their twinkle in its alpha.
+        paint.setColor(0xFFFFFFFF);
+        paint.setAlpha(255);
+        paint.setColorFilter(null);
         float mx = w * 0.84f, my = h * 0.22f, mr = 34 * density;
         if (night) drawMoon(canvas, mx, my, mr);
         else if (sunElevation > -4) {
@@ -238,6 +241,7 @@ final class SkyView extends View {
      * circle), otherwise a drawn moon with the real phase.
      */
     private void drawMoon(Canvas canvas, float cx, float cy, float r) {
+        paint.setAlpha(255);
         paint.setShader(new RadialGradient(cx, cy, r * 3.2f, 0x33DDE6F0, 0x00DDE6F0, Shader.TileMode.CLAMP));
         canvas.drawCircle(cx, cy, r * 3.2f, paint);
         paint.setShader(null);
@@ -252,6 +256,7 @@ final class SkyView extends View {
             m.postTranslate(cx - photo.getWidth() / 2f * scale, cy - photo.getHeight() / 2f * scale);
             shader.setLocalMatrix(m);
             paint.setShader(shader);
+            paint.setAlpha(255);
             canvas.drawCircle(cx, cy, r, paint);
             paint.setShader(null);
             return;
