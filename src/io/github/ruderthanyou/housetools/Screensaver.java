@@ -366,7 +366,7 @@ final class Screensaver implements OverlayFactory {
                 fill.setColor(0xFF2A3F63);
                 canvas.drawCircle(r, r, r - stroke / 2, fill);
                 Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
-                text.setColor(TEXT);
+                text.setColor(0xFFF5F7FA);
                 text.setTextSize(size * 0.45f);
                 text.setTextAlign(Paint.Align.CENTER);
                 canvas.drawText(initial, r, r - (text.descent() + text.ascent()) / 2, text);
