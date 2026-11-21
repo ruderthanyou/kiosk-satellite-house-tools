@@ -9,7 +9,7 @@ A screensaver for a lit room, shown under the name you choose (Home Screensaver 
 - Family photos at random from a Home Assistant media folder, every photo once before any repeats. Bursts are left out of the list, so the same moment rarely shows twice.
 - Tap the right side for the next photo and the left side for the previous one. Tap the middle to close. A double tap also closes it.
 - Chips in the style of Weather Mood's buttons: faces (gray when away), **Inside** temperature and humidity for the room, the thermostat when it's on, the garage door, the alarm and any alert.
-- This room's lights as buttons. Tap one to switch it. When a light group exists, its numbered bulbs are left out.
+- This room's lights as buttons. Tap one to switch it. Give lights the Home Assistant label **Screensaver** to choose which ones show; without labels, the first working lights show (up to 6), and when a light group exists its numbered bulbs are left out.
 - Its own corners: clock and date (top left), Outside weather with today's high and low (bottom right), and the dew point colored by comfort with the humidity under it (bottom left). Turn off Kiosk Satellite's corner widgets to avoid doubles.
 - The rows wrap instead of cutting off. Kiosk Satellite's Now Playing card and pixel shift work on top of it.
 

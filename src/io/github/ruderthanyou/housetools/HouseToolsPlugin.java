@@ -89,6 +89,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile String photoIndexPath = "/local/screensaver/photo_index.json";
     private volatile boolean nightScreensaver;
     private volatile boolean softText;
+    private volatile String lightsLabel = "Screensaver"; // Home Assistant label that picks the light buttons
+    private volatile int maxLights = 6;
     private volatile String preferSensors = ""; // comma list of words to look for first in room sensor IDs
     private volatile String weatherEntity = "";
     private static final String MOON_NORTH =
@@ -253,6 +255,10 @@ public final class HouseToolsPlugin implements KioskPlugin {
     /** What the live template depends on; a change re-subscribes. */
     private String houseSubscriptionKey() {
         return (
+            lightsLabel +
+            "|" +
+            maxLights +
+            "|" +
             area +
             "|" +
             garageEntity +
@@ -458,6 +464,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
         Object night = settings.get("nightScreensaver");
         if (night instanceof Boolean) nightScreensaver = (Boolean) night;
         weatherEntity = entity(settings.get("weatherEntity"));
+        lightsLabel = text(settings.get("lightsLabel"), "Screensaver").replaceAll("[^A-Za-z0-9 _-]", "");
+        maxLights = (int) clamp(settings.get("maxLights"), 0, 20, maxLights);
         preferSensors = text(settings.get("preferSensors"), "")
             .toLowerCase(java.util.Locale.US)
             .replaceAll("[^a-z0-9_,]", "");
@@ -612,6 +620,14 @@ public final class HouseToolsPlugin implements KioskPlugin {
             "{% set ns = namespace(l=[], p=[]) %}" +
             "{% for l in al %}{% set base = l | regex_replace('_\\d+_light$', '_light') %}" +
             "{% if base == l or base not in al %}{% set ns.l = ns.l + [{'id': l, 'name': state_attr(l,'friendly_name') or l, 'on': is_state(l,'on'), 'off_line': states(l) in ['unavailable','unknown']}] %}{% endif %}{% endfor %}" +
+            // Lights labeled with the chosen label (Screensaver by default) win; otherwise the first few that work.
+            "{% set lab = label_id('" +
+            lightsLabel +
+            "') %}{% set tagged = label_entities(lab) if lab else [] %}" +
+            "{% set chosen = ns.l | selectattr('id', 'in', tagged) | list %}" +
+            "{% set ns.l = chosen if chosen else (ns.l | rejectattr('off_line') | list)[:" +
+            maxLights +
+            "] %}" +
             "{% for p in states.person if p.attributes.entity_picture %}{% set ns.p = ns.p + [{'name': p.name, 'home': p.state == 'home', 'pic': p.attributes.entity_picture}] %}{% endfor %}" +
             // Room temperature/humidity: sensors in the area with that device class, not batteries, chips or
             // device internals; preferred words first, then one with a matching humidity sensor, then any.

@@ -32,6 +32,8 @@ Kiosk Satellite ──device.light──▶ dark or lit ──▶ setScreensaver
 NASA SVS ──hourly moon image──▶ SkyView (last good image saved in the app's cache)
 ```
 
+Light buttons: the room's lights (tablet screens, switch LED bars and numbered group members left out); if any carry the **Light buttons label**, only those, otherwise the first working ones up to **Light buttons without a label**.
+
 One `render_template` subscription carries everything the screens show. Home Assistant re-sends it whenever anything in it changes, so the plugin never polls entities. The template only reads entities named in the settings (and the room's area), so nothing about a particular house is built in.
 
 ## Room light
