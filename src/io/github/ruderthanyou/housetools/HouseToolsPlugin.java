@@ -464,7 +464,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     private double lightAverage = Double.NaN; // smoothed reading
     private long lightAverageAt;
-    private Double lightPublished;             // last value sent as the Room light entity
+    private Double lightPublished; // last value sent as the Room light entity
 
     /**
      * Raw readings from the tablet's light sensor. The sensor sits next to the screen, so the screen's own glow
@@ -513,7 +513,6 @@ public final class HouseToolsPlugin implements KioskPlugin {
         meta.put("accuracyDecimals", 0);
         return meta;
     }
-
 
     private static String text(Object value, String fallback) {
         return value instanceof String && !((String) value).trim().isEmpty() ? ((String) value).trim() : fallback;
