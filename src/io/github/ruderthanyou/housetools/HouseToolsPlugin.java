@@ -168,9 +168,13 @@ public final class HouseToolsPlugin implements KioskPlugin {
         }
         try {
             host.subscribe("screen.brightness");
-            host.executeCommand("getBrightness", Collections.singletonMap("panel", (Object) true), (ok, data, error) -> {
-                if (ok && data instanceof Number) panel = ((Number) data).doubleValue();
-            });
+            host.executeCommand(
+                "getBrightness",
+                Collections.singletonMap("panel", (Object) true),
+                (ok, data, error) -> {
+                    if (ok && data instanceof Number) panel = ((Number) data).doubleValue();
+                }
+            );
         } catch (Throwable error) {
             log("Screen brightness: " + error);
         }
@@ -512,8 +516,10 @@ public final class HouseToolsPlugin implements KioskPlugin {
         lightAverageAt = now;
         double level = lightAverage;
         boolean first = lightPublished == null;
-        boolean real = !first && Math.abs(level - lightPublished) >= 2.0
-            && (level >= lightPublished * 1.5 || level <= lightPublished / 1.5);
+        boolean real =
+            !first &&
+            Math.abs(level - lightPublished) >= 2.0 &&
+            (level >= lightPublished * 1.5 || level <= lightPublished / 1.5);
         if (first || (real && now - lightPublishedAt >= 60_000L)) {
             lightPublished = (double) Math.round(level);
             lightPublishedAt = now;
@@ -542,13 +548,16 @@ public final class HouseToolsPlugin implements KioskPlugin {
         Double rawBefore = lightRaw;
         if (rawBefore == null || Math.abs(newPanel - before) < 0.15) return;
         final double change = newPanel - before;
-        main.postDelayed(() -> {
-            Double rawAfter = lightRaw;
-            if (!alive || rawAfter == null) return;
-            double sample = (rawAfter - rawBefore) / change;
-            if (sample < 0 || sample > 60) return; // the room changed too, not just the screen
-            glow = glow == 0 ? sample : glow * 0.7 + sample * 0.3;
-        }, 4_000);
+        main.postDelayed(
+            () -> {
+                Double rawAfter = lightRaw;
+                if (!alive || rawAfter == null) return;
+                double sample = (rawAfter - rawBefore) / change;
+                if (sample < 0 || sample > 60) return; // the room changed too, not just the screen
+                glow = glow == 0 ? sample : glow * 0.7 + sample * 0.3;
+            },
+            4_000
+        );
     }
 
     private static Map<String, Object> lightMeta() {
