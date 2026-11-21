@@ -239,8 +239,13 @@ final class SkyView extends View {
         if (night && moonUp) drawMoon(canvas, mx, my, mr);
         else if (sunElevation > -4) {
             // Where the sun really is: east (left) to west (right) by azimuth, height by elevation.
-            float sxp = (float) (0.08 + 0.84 * Math.max(0, Math.min(1, (sunAzimuth - 90) / 180.0))) * w;
-            float syp = (float) (0.80 - 0.62 * Math.max(0, Math.min(1, sunElevation / 60.0))) * h;
+            // Same sky map as the stars and moon: azimuth from south (west positive) across the width,
+            // altitude up from the horizon; kept on screen a little past the edges.
+            double azS = Math.toRadians(sunAzimuth - 180);
+            if (lat < 0) azS = azS > 0 ? azS - Math.PI : azS + Math.PI;
+            float fx = (float) Math.max(0.04, Math.min(0.96, (azS + Math.PI / 2) / Math.PI));
+            float fy = (float) Math.max(0.06, (1 - Math.max(0, sunElevation) / 75.0) * 0.92);
+            float sxp = fx * w, syp = fy * h;
             boolean low = sunElevation < 8;
             int glow = low ? 0x88FFB060 : 0x77FFE9A8;
             paint.setShader(new RadialGradient(sxp, syp, mr * 5, glow, glow & 0x00FFFFFF, Shader.TileMode.CLAMP));
