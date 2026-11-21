@@ -36,19 +36,34 @@ import me.jxl.kiosk.plugins.KioskPlugin;
 import me.jxl.kiosk.plugins.PluginHost;
 
 /**
- * House Tools for Kiosk Satellite.
+ * House Tools for Kiosk Satellite: the plugin's entry point.
  *
- * <p>Auto-close: Kiosk Satellite's window is still on screen but has lost input focus to a window from
- * another app (for example the Google Assistant pop-up, which is not a full-screen app and so is not
- * handled by Kiosk Satellite's return-home timer). After the configured time, bring Kiosk Satellite
- * back to the front, which dismisses that window.
+ * <p>Features, each described in the README:
+ * <ul>
+ *   <li><b>Screensaver</b> ({@link Screensaver}): photos in a lit room, an animated sky ({@link SkyView}) in a dark
+ *       one. This class decides which one Kiosk Satellite shows ({@link #applyMode}) from the light sensor.</li>
+ *   <li><b>Alert banner</b> ({@link AlertBanner}): a bar at the top for the alerts entity's items.</li>
+ *   <li><b>Auto-close</b>: Kiosk Satellite's window is still on screen but has lost input focus to another app's
+ *       window (for example the Google Assistant pop-up) for the set time, so bring Kiosk Satellite back to the
+ *       front, which closes that window. Full-screen apps stop the activity instead and are left alone.</li>
+ *   <li><b>Touch tracking</b>: the activity's Window.Callback is wrapped in a pass-through proxy that notes each
+ *       finger-down, for the Last touched and In use entities. The original callback is put back on stop.</li>
+ * </ul>
  *
- * <p>Touch tracking: wrap the activity's Window.Callback with a pass-through proxy that notes each finger
- * down, then publish the last touch time and an "in use" flag. Every call goes to the original callback
- * unchanged, and the original is put back when the plugin stops.
+ * <p>Home Assistant data: one live {@code render_template} subscription ({@link #subscribeHouse}) returns a JSON
+ * snapshot of everything the screensaver and banner show (people, room climate and lights, garage, alarm, alerts,
+ * weather, sun, home location). Nothing about a particular house is built in: entities, the room and the photo
+ * list are settings, and Home Assistant's address comes from Kiosk Satellite.
  *
- * <p>All window state is read and changed on the Android main thread. Plugin callbacks only post work
- * there, so they always return immediately.
+ * <p>Threads: Kiosk Satellite calls {@code start}, {@code configure}, {@code execute}, {@code onEvent} and
+ * {@code stop} one at a time on a plugin worker thread, and each must return within three seconds, so they only
+ * record state and post work. Window state and views are touched only on the Android main thread ({@link #main}).
+ * Downloads run on the screensaver's own background thread.
+ *
+ * <p>Restarts: the plugin can be stopped and started at any time (updates, app restarts, Home Assistant restarts).
+ * On start it reads the current light level, keeps retrying its screensaver choice with growing gaps, and every
+ * five minutes re-applies that choice and reconnects the Home Assistant data if it went quiet
+ * ({@link #healthCheck}).
  */
 public final class HouseToolsPlugin implements KioskPlugin {
     private static final long POLL_MS = 5_000;

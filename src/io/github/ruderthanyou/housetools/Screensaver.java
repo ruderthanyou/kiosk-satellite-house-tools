@@ -39,9 +39,25 @@ import me.jxl.kiosk.plugins.OverlayFactory;
 import me.jxl.kiosk.plugins.PluginHost;
 
 /**
- * The house screensaver: family photos at random (or in blocks), with face chips, house status, room climate
- * and this room's lights along the bottom. Taps: sides change photos, middle closes, chips do their own thing.
- * Kiosk Satellite's own corner widgets and Now Playing card stay on top of it.
+ * The screensaver view Kiosk Satellite shows when the plugin's mode is selected. Kiosk Satellite builds it through
+ * {@link #create} each time the screensaver appears and calls {@link #onDestroy} when it goes, so all state that
+ * must last (photo list, history, star catalog) lives in this object, not in the view.
+ *
+ * <p>Two screens in one view ({@code Root}):
+ * <ul>
+ *   <li><b>Photo screen</b> (lit room): whole photos over a blurred fill ({@code PhotoView}), at random with no
+ *       repeats until all have shown, crossfading; corners with the clock and date, Outside weather and the dew
+ *       point, sized from Kiosk Satellite's own widgets; and centered chips for faces, inside climate, house
+ *       status and this room's lights, which wrap onto new lines ({@code FlowRow}).</li>
+ *   <li><b>Night screen</b> (dark room, when the sky screensaver is on): {@link SkyView} with a big clock and
+ *       date and Weather Mood style buttons along the bottom.</li>
+ * </ul>
+ *
+ * <p>Taps: right third = next photo, left third = previous, middle = close (Kiosk Satellite also closes on a
+ * double tap). Chips handle their own taps.
+ *
+ * <p>Threads: everything here runs on the main thread except downloads (photo list, photos, face pictures, the
+ * NASA moon image, the star catalog), which run on {@link #worker} and post their results back.
  */
 final class Screensaver implements OverlayFactory {
     static final String KEY = "home";

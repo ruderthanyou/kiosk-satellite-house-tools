@@ -17,7 +17,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Small blocking HTTP and JSON helpers. Call only from background threads. */
+/**
+ * Small blocking HTTP and JSON helpers. Call only from background threads.
+ *
+ * <p>{@link #plain} turns Kiosk Satellite's results (already-parsed maps and lists, or JSON text) into plain Java
+ * maps and lists, and {@link #map}, {@link #list} and {@link #str} read them without casts or null checks.
+ */
 final class Net {
     private Net() {}
 

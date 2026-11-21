@@ -92,7 +92,10 @@ In Kiosk Satellite: **Plugin Manager > Add plugin**, paste `https://github.com/r
 
 ## Build
 
-Pushes to `main` build a test ZIP as a GitHub Actions artifact. Publishing a GitHub release (tag `v1.2.3`) builds and attaches the release files Kiosk Satellite installs from.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the plugin works.
+
+
+Pushes to `main` build a test ZIP as a GitHub Actions artifact and format the code with Prettier. Publishing a GitHub release (tag `v1.2.3`) builds and attaches the release files Kiosk Satellite installs from.
 
 ## License
 

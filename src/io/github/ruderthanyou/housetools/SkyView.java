@@ -20,9 +20,24 @@ import android.view.View;
 import java.util.Random;
 
 /**
- * An animated sky for the night screensaver: colors follow the sun's height, stars twinkle on clear nights,
- * the moon shows its real phase, and clouds, rain or snow follow the current weather. Redraws about 12 times
- * a second only while it is on screen.
+ * The animated sky for the night screen.
+ *
+ * <ul>
+ *   <li><b>Colors</b> follow the sun's height (night, dusk, golden hour, day) from Home Assistant's {@code sun.sun}.</li>
+ *   <li><b>Stars</b>: the brightest ~1,000 from the Yale Bright Star Catalog ({@code assets/stars.csv}), placed for
+ *       the home's latitude and longitude and the current time ({@link #computeReal}), sized by magnitude and
+ *       tinted by B-V color. Without a location, random stars are drawn instead.</li>
+ *   <li><b>The moon</b>: its position from a low-precision lunar formula (good to about a degree), drawn with
+ *       NASA's photo for the current hour, screen-blended so the dark side shows the sky. Without the photo, a
+ *       drawn moon with the right phase ({@link #moonPhase}).</li>
+ *   <li><b>The sun</b> by day, from {@code sun.sun}'s azimuth and elevation.</li>
+ *   <li><b>Weather</b>: layered clouds (pre-drawn bitmaps, {@link #buildClouds}), rain slanted by the wind, snow and
+ *       lightning flashes, from the weather entity's condition.</li>
+ * </ul>
+ *
+ * <p>Sky map ({@link #project}): looking toward the equator (south in the northern hemisphere), east at the left
+ * edge, west at the right, the horizon near the bottom and about 75 degrees up at the top. Positions are
+ * recomputed every 30 seconds. Redraws run about 12 times a second, only while the view is visible.
  */
 final class SkyView extends View {
     private static final int STARS = 220;

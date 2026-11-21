@@ -1,0 +1,23 @@
+name: Format
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  prettier:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prettier
+        run: npx --yes --package prettier@3.3.3 --package prettier-plugin-java@2.6.4 prettier --write .
+      - name: Commit formatting changes
+        run: |
+          if git diff --quiet; then echo "Already formatted"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Format with Prettier"
+          git push
