@@ -72,6 +72,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile String alertsEntity = "";
     private volatile String photoIndexPath = "/local/screensaver/photo_index.json";
     private volatile boolean nightScreensaver;
+    private volatile boolean softText;
     private volatile String preferSensors = ""; // comma list of words to look for first in room sensor IDs
     private volatile String weatherEntity = "";
     private static final String MOON_NORTH = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg";
@@ -356,6 +357,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
         alertsEntity = entity(settings.get("alertsEntity"));
         String index = text(settings.get("photoIndexPath"), "/local/screensaver/photo_index.json");
         photoIndexPath = index.startsWith("/") ? index : "/" + index;
+        Object soft = settings.get("softText");
+        if (soft instanceof Boolean) softText = (Boolean) soft;
         Object night = settings.get("nightScreensaver");
         if (night instanceof Boolean) nightScreensaver = (Boolean) night;
         weatherEntity = entity(settings.get("weatherEntity"));
@@ -470,6 +473,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
     String haUrl() { return haUrlSetting.isEmpty() ? ksHaUrl : haUrlSetting; }
     String photoIndexPath() { return photoIndexPath; }
     boolean nightScreensaver() { return nightScreensaver; }
+    boolean softText() { return softText; }
 
     java.io.InputStream openAsset(String name) throws java.io.IOException {
         PluginHost h = host();

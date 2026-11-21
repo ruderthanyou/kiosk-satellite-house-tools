@@ -53,7 +53,8 @@ final class Screensaver implements OverlayFactory {
     private static final int ORANGE = 0xFFFB8C00;
     private static final int RED = 0xFFE53935;
     private static final int GREEN = 0xFF43A047;
-    private static final int TEXT = 0xFFF5F7FA;
+    private int TEXT = 0xFFF5F7FA;          // soft gray (OLED care) or near-white, set when the view is made
+    private int TEXT_SOFT_E6 = 0xE6F5F7FA, TEXT_SOFT_CC = 0xCCF5F7FA;
     private static final int TEXT_DIM = 0xB3F5F7FA;
 
     private final HouseToolsPlugin plugin;
@@ -81,6 +82,10 @@ final class Screensaver implements OverlayFactory {
     // ----- OverlayFactory (main thread) -----
 
     @Override public View create(Context context, KsTheme theme) {
+        boolean soft = plugin.softText();
+        TEXT = soft ? 0xFFAAAAAA : 0xFFF5F7FA;
+        TEXT_SOFT_E6 = soft ? 0xE6AAAAAA : 0xE6F5F7FA;
+        TEXT_SOFT_CC = soft ? 0xCCAAAAAA : 0xCCF5F7FA;
         view = new Root(context, theme);
         worker = Executors.newSingleThreadExecutor();
         applyData(plugin.data());
@@ -420,7 +425,7 @@ final class Screensaver implements OverlayFactory {
             dayClock = cornerText(context, 78, 400);
             dayClock.setIncludeFontPadding(false);
             dayDate = cornerText(context, 37, 300);
-            dayDate.setTextColor(0xE6F5F7FA);
+            dayDate.setTextColor(TEXT_SOFT_E6);
             dayClockBox.addView(dayClock);
             dayClockBox.addView(dayDate);
             LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -434,7 +439,7 @@ final class Screensaver implements OverlayFactory {
             dewValue = cornerText(context, 34, 400);
             dewValue.setGravity(Gravity.CENTER_VERTICAL);
             dewLabel = cornerText(context, 12, 400);
-            dewLabel.setTextColor(0xCCF5F7FA);
+            dewLabel.setTextColor(TEXT_SOFT_CC);
             dewBox.addView(dewValue);
             dewBox.addView(dewLabel);
             LayoutParams dewParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -462,11 +467,11 @@ final class Screensaver implements OverlayFactory {
             middle.setGravity(Gravity.CENTER_HORIZONTAL);
             clock = new TextView(context);
             theme.styleText(clock, 104, 300, "onSurface");
-            clock.setTextColor(0xFFF5F7FA);
+            clock.setTextColor(TEXT);
             clock.setIncludeFontPadding(false);
             date = new TextView(context);
             theme.styleText(date, 24, 400, "onSurface");
-            date.setTextColor(0xE6F5F7FA);
+            date.setTextColor(TEXT_SOFT_E6);
             middle.addView(clock);
             middle.addView(date);
             LayoutParams middleParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -556,7 +561,7 @@ final class Screensaver implements OverlayFactory {
         private TextView shadowed(Context context, float sp, int weight) {
             TextView t = new TextView(context);
             theme.styleText(t, sp, weight, "onSurface");
-            t.setTextColor(0xFFF5F7FA);
+            t.setTextColor(TEXT);
             t.setShadowLayer(dp(6), 0, dp(1), 0xCC000000);
             return t;
         }
@@ -588,16 +593,17 @@ final class Screensaver implements OverlayFactory {
                 String u = Net.str(w.get("unit")).replace("°", "");
                 Object tt = w.get("temp");
                 if (tt instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) tt).doubleValue()) + "°" + u, conditionIcon(state), 56, 52, conditionColor(state), 300));
-                dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 27, 22, 0xFFF5F7FA, 300));
+                dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 27, 22, TEXT, 300));
                 Double h = plugin.forecastHigh(), l = plugin.forecastLow();
-                if (h != null && l != null) dayWeather.addView(iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 27, 22, 0xFFF5F7FA, 300));
+                if (h != null && l != null) dayWeather.addView(iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 27, 22, TEXT, 300));
                 Object ws = w.get("wind");
-                if (ws instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) ws).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", 27, 22, 0xFFF5F7FA, 300));
+                if (ws instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) ws).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", 27, 22, TEXT, 300));
                 Object dew = w.get("dew"), hum = w.get("hum");
                 if (dew instanceof Number) {
                     double d = ((Number) dew).doubleValue();
                     boolean celsius = u.toUpperCase(java.util.Locale.US).contains("C");
                     int color = dewColor(celsius ? d * 9 / 5 + 32 : d);
+                    if (plugin.softText()) color = dim(color, 0.7f);
                     dewValue.setText(Math.round(d) + " °" + u);
                     dewValue.setTextColor(color);
                     setLeftIcon(dewValue, "mdi:water-thermometer", 30, color);
@@ -933,6 +939,11 @@ final class Screensaver implements OverlayFactory {
         @Override public void setAlpha(int alpha) { ring.setAlpha(alpha); icon.setAlpha(alpha); }
         @Override public void setColorFilter(android.graphics.ColorFilter filter) { icon.setColorFilter(filter); }
         @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
+    static int dim(int color, float f) {
+        int r = (int) (((color >> 16) & 255) * f), g = (int) (((color >> 8) & 255) * f), b = (int) ((color & 255) * f);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     /** Dew point comfort colors (°F): dry and comfortable blues/greens up to muggy reds. */

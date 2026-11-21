@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "house-tools",
   "name": "House Tools",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "minAndroidSdk": 24,
   "minAppVersion": "2026.11.14",
   "entryClass": "io.github.ruderthanyou.housetools.HouseToolsPlugin",
@@ -159,6 +159,14 @@
       "default": false,
       "group": "Screensaver",
       "description": "In a dark room, show an animated sky that follows the real weather, sun and moon, with a big clock and weather buttons, instead of the tablet's own screensaver."
+    },
+    {
+      "key": "softText",
+      "type": "boolean",
+      "title": "Soft gray text",
+      "default": false,
+      "group": "Screensaver",
+      "description": "Gray text and dimmer colors on the screensaver, for OLED screens that can burn in."
     },
     {
       "key": "weatherEntity",

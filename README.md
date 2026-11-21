@@ -31,6 +31,7 @@ The room's temperature and humidity come from a temperature (and humidity) senso
 | Dark room below | 2 lx | Below this, the tablet's own screensaver shows |
 | Home Assistant address (optional) | empty | Leave empty to use Kiosk Satellite's |
 | Use the sky screensaver in a dark room | Off | See below |
+| Soft gray text | Off | Gray text and dimmer colors, for OLED screens |
 | Weather | empty | Weather entity for the sky screensaver |
 | Moon images (optional) | empty | Another year's NASA image address |
 
