@@ -417,30 +417,30 @@ final class Screensaver implements OverlayFactory {
             // Corners like Kiosk Satellite's widgets: plain text with a soft shadow.
             dayClockBox = new LinearLayout(context);
             dayClockBox.setOrientation(LinearLayout.VERTICAL);
-            dayClock = shadowed(context, 62, 400);
+            dayClock = cornerText(context, 78, 400);
             dayClock.setIncludeFontPadding(false);
-            dayDate = shadowed(context, 30, 300);
+            dayDate = cornerText(context, 37, 300);
             dayDate.setTextColor(0xE6F5F7FA);
             dayClockBox.addView(dayClock);
             dayClockBox.addView(dayDate);
             LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             clockParams.gravity = Gravity.TOP | Gravity.LEFT;
-            clockParams.leftMargin = dp(24);
-            clockParams.topMargin = dp(20);
+            clockParams.leftMargin = (int) ref(24);
+            clockParams.topMargin = (int) ref(20);
             addView(dayClockBox, clockParams);
 
             dewBox = new LinearLayout(context);
             dewBox.setOrientation(LinearLayout.VERTICAL);
-            dewValue = shadowed(context, 30, 400);
+            dewValue = cornerText(context, 34, 400);
             dewValue.setGravity(Gravity.CENTER_VERTICAL);
-            dewLabel = shadowed(context, 12, 400);
+            dewLabel = cornerText(context, 12, 400);
             dewLabel.setTextColor(0xCCF5F7FA);
             dewBox.addView(dewValue);
             dewBox.addView(dewLabel);
             LayoutParams dewParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dewParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
-            dewParams.leftMargin = dp(20);
-            dewParams.bottomMargin = dp(18);
+            dewParams.leftMargin = (int) ref(20);
+            dewParams.bottomMargin = (int) ref(26);
             addView(dewBox, dewParams);
 
             dayWeather = new LinearLayout(context);
@@ -448,8 +448,8 @@ final class Screensaver implements OverlayFactory {
             dayWeather.setGravity(Gravity.RIGHT);
             LayoutParams dwParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dwParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-            dwParams.rightMargin = dp(22);
-            dwParams.bottomMargin = dp(16);
+            dwParams.rightMargin = (int) ref(22);
+            dwParams.bottomMargin = (int) ref(22);
             addView(dayWeather, dwParams);
 
             // Dark-room screen, like Weather Mood: animated sky, big clock and date, weather buttons along the bottom.
@@ -523,6 +523,21 @@ final class Screensaver implements OverlayFactory {
 
         int dp(float v) { return theme.px(v); }
 
+        /**
+         * Sizes for the corners, measured on Kiosk Satellite's own widgets in a screenshot 800 pixels tall, scaled
+         * to this screen so they look the same on every tablet.
+         */
+        float ref(float px) {
+            android.util.DisplayMetrics m = getResources().getDisplayMetrics();
+            return px * Math.min(m.widthPixels, m.heightPixels) / 800f;
+        }
+
+        private TextView cornerText(Context context, float refPx, int weight) {
+            TextView t = shadowed(context, 12, weight);
+            t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, ref(refPx));
+            return t;
+        }
+
         private PhotoView photoView(Context context) {
             PhotoView image = new PhotoView(context);
             image.setAlpha(0f);
@@ -572,12 +587,12 @@ final class Screensaver implements OverlayFactory {
             {
                 String u = Net.str(w.get("unit")).replace("°", "");
                 Object tt = w.get("temp");
-                if (tt instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) tt).doubleValue()) + "°" + u, conditionIcon(state), 46, 44, conditionColor(state), 300));
-                dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 22, 18, 0xFFF5F7FA, 300));
+                if (tt instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) tt).doubleValue()) + "°" + u, conditionIcon(state), 56, 52, conditionColor(state), 300));
+                dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 27, 22, 0xFFF5F7FA, 300));
                 Double h = plugin.forecastHigh(), l = plugin.forecastLow();
-                if (h != null && l != null) dayWeather.addView(iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 22, 18, 0xFFF5F7FA, 300));
+                if (h != null && l != null) dayWeather.addView(iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 27, 22, 0xFFF5F7FA, 300));
                 Object ws = w.get("wind");
-                if (ws instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) ws).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", 22, 18, 0xFFF5F7FA, 300));
+                if (ws instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) ws).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", 27, 22, 0xFFF5F7FA, 300));
                 Object dew = w.get("dew"), hum = w.get("hum");
                 if (dew instanceof Number) {
                     double d = ((Number) dew).doubleValue();
@@ -585,7 +600,7 @@ final class Screensaver implements OverlayFactory {
                     int color = dewColor(celsius ? d * 9 / 5 + 32 : d);
                     dewValue.setText(Math.round(d) + " °" + u);
                     dewValue.setTextColor(color);
-                    setLeftIcon(dewValue, "mdi:water-thermometer", 28, color);
+                    setLeftIcon(dewValue, "mdi:water-thermometer", 30, color);
                     dewLabel.setText("Dew point" + (hum instanceof Number ? " · " + Math.round(((Number) hum).doubleValue()) + "% humidity" : ""));
                     dewBox.setVisibility(nightShown() ? GONE : VISIBLE);
                 }
@@ -603,27 +618,29 @@ final class Screensaver implements OverlayFactory {
         }
 
         /** "56°F" with an icon after it, right-aligned: one line of the weather corner. */
-        private TextView iconLine(String text, String icon, float sp, int iconDp, int iconColor, int weight) {
-            TextView line = shadowed(getContext(), sp, weight);
+        private TextView iconLine(String text, String icon, float refPx, int iconRef, int iconColor, int weight) {
+            TextView line = cornerText(getContext(), refPx, weight);
             line.setText(text);
             line.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
             try {
                 Drawable d = theme.icon(icon, "onSurface");
                 if (d != null) {
-                    d.setBounds(0, 0, dp(iconDp), dp(iconDp));
+                    int size = (int) ref(iconRef);
+                    d.setBounds(0, 0, size, size);
                     d.setTint(iconColor);
                     line.setCompoundDrawables(null, null, d, null);
-                    line.setCompoundDrawablePadding(dp(sp > 30 ? 12 : 8));
+                    line.setCompoundDrawablePadding((int) ref(refPx > 40 ? 12 : 8));
                 }
             } catch (Throwable ignored) {}
             return line;
         }
 
-        private void setLeftIcon(TextView view, String icon, int iconDp, int color) {
+        private void setLeftIcon(TextView view, String icon, int iconRef, int color) {
             try {
                 Drawable d = theme.icon(icon, "onSurface");
                 if (d != null) {
-                    d.setBounds(0, 0, dp(iconDp), dp(iconDp));
+                    int size = (int) ref(iconRef);
+                    d.setBounds(0, 0, size, size);
                     d.setTint(color);
                     view.setCompoundDrawables(d, null, null, null);
                     view.setCompoundDrawablePadding(dp(8));
