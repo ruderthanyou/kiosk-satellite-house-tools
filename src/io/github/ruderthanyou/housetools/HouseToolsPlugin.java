@@ -95,6 +95,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile boolean dark;
     private String subscribedArea;
     private volatile String houseKey = "house0";
+    private volatile long lastHouseData;
+    private long lastHealthCheck;
     private int houseSubscriptions;
 
     // Touch tracking, written from the main thread.
@@ -125,8 +127,11 @@ public final class HouseToolsPlugin implements KioskPlugin {
         }
     };
 
+    private long startedAt;
+
     @Override public void start(PluginHost host, Map<String, Object> settings) {
         this.host = host;
+        startedAt = System.currentTimeMillis();
         alive = true;
         apply(settings);
         publishSwitch();
@@ -209,6 +214,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
      */
     private volatile String modeId = "plugin:house-tools:" + Screensaver.KEY;
     private int modeRetries;
+    private boolean modeLogged;
 
     /** Look the mode up in getScreensaverMode's list (the ID format is Kiosk Satellite's) and try again shortly. */
     private void findModeAndRetry(String error) {
@@ -227,7 +233,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
                     }
                 }
                 log("Screensaver mode: " + error + ". Plugin modes: " + seen + "-> using " + modeId);
-                if (modeRetries++ < 5) main.postDelayed(() -> { if (alive) applyMode(); }, 5_000);
+                long wait = Math.min(300_000L, 5_000L << Math.min(6, modeRetries++)); // 5 s, 10 s, 20 s ... up to 5 min
+                main.postDelayed(() -> { if (alive) applyMode(); }, wait);
             });
         } catch (Throwable e) {
             log("Screensaver mode lookup: " + e);
@@ -244,7 +251,13 @@ public final class HouseToolsPlugin implements KioskPlugin {
             if (want) {
                 h.executeCommand("setScreensaverMode", Collections.singletonMap("mode", modeId),
                     (ok, data, error) -> {
-                        if (ok) { log("Screensaver selected (" + modeId + ")"); return; }
+                        if (ok) {
+                            boolean wasRetrying = modeRetries > 0 || !modeLogged;
+                            modeRetries = 0;
+                            modeLogged = true;
+                            if (wasRetrying) log("Screensaver selected (" + modeId + ")");
+                            return;
+                        }
                         modeApplied = null;
                         findModeAndRetry(error);
                     });
@@ -273,7 +286,13 @@ public final class HouseToolsPlugin implements KioskPlugin {
         }
         if ("ks.browser.state".equals(event)) { readHaUrl(); return; }
         if (("ks.ha.subscription." + houseKey).equals(event)) {
+            if ("ended".equals(payload.get("type"))) {
+                log("House data ended (" + payload.get("error") + "); subscribing again");
+                main.postDelayed(() -> { if (alive) { subscribedArea = null; subscribeHouse(); } }, 10_000);
+                return;
+            }
             if ("event".equals(payload.get("type"))) {
+                lastHouseData = System.currentTimeMillis();
                 Object ev = payload.get("event");
                 Object result = ev instanceof Map ? ((Map<?, ?>) ev).get("result") : null;
                 if (result != null) {
@@ -388,7 +407,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
         PluginHost h = host;
         if (h == null) return;
         // A new key each time: reusing "house" right after unsubscribing it can lose the new subscription.
-        if (subscribedArea != null) { try { h.haUnsubscribe(houseKey); } catch (Throwable ignored) {} }
+        try { h.haUnsubscribe(houseKey); } catch (Throwable ignored) {} // unknown keys are ignored
         houseKey = "house" + (++houseSubscriptions);
         subscribedArea = houseSubscriptionKey();
         String safeArea = area.replaceAll("[^a-z0-9_]", "");
@@ -567,7 +586,23 @@ public final class HouseToolsPlugin implements KioskPlugin {
         main.post(poll);
     }
 
+    /** Every 5 minutes: put our screensaver choice back and reconnect the house data if it went quiet. */
+    private void healthCheck() {
+        long now = System.currentTimeMillis();
+        if (now - lastHealthCheck < 300_000L) return;
+        lastHealthCheck = now;
+        modeApplied = null; // setScreensaverMode again; harmless if nothing changed
+        applyMode();
+        if (lastHouseData > 0 && now - lastHouseData > 30 * 60_000L || lastHouseData == 0 && now - startedAt > 120_000L) {
+            log("No house data for a while; subscribing again");
+            subscribedArea = null;
+            subscribeHouse();
+            lastHouseData = now; // don't repeat for another 30 minutes
+        }
+    }
+
     private void check() {
+        healthCheck();
         Activity current = activity.get();
         if (current != null) spy(current);
         publishTouch(false);
