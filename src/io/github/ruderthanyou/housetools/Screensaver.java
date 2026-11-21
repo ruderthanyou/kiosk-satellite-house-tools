@@ -10,6 +10,7 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -910,10 +911,24 @@ final class Screensaver implements OverlayFactory {
             theme.styleText(chip, 18, 500, "onSurface");
             chip.setTextColor(foreground);
             chip.setGravity(Gravity.CENTER_VERTICAL);
-            chip.setPadding(dp(icon == null ? 18 : 8), dp(7), dp(18), dp(7));
+            chip.setIncludeFontPadding(false);
+            int shift = textShift(chip);
+            chip.setPadding(dp(icon == null ? 18 : 8), dp(8) + shift, dp(18), dp(8) - shift);
             chip.setBackground(pill(background));
             setIcon(chip, icon, foreground);
             return chip;
+        }
+
+        /**
+         * How far to move a chip's text down so its capitals and digits sit in the middle of the pill, level with
+         * the icon. Android centers the whole line, including the room kept below for descenders (g, y), which
+         * leaves capitals and digits a little high.
+         */
+        private int textShift(TextView chip) {
+            Paint.FontMetrics fm = chip.getPaint().getFontMetrics();
+            Rect caps = new Rect();
+            chip.getPaint().getTextBounds("H0", 0, 2, caps);
+            return Math.round((fm.ascent + fm.descent - caps.top - caps.bottom) / 2f);
         }
 
         private GradientDrawable pill(int background) {
@@ -931,7 +946,8 @@ final class Screensaver implements OverlayFactory {
                 if (d == null) return;
                 d.setTint(foreground);
                 Drawable ringed = new RingIcon(d, foreground, dp(34), dp(18), Math.max(1, dp(1)));
-                ringed.setBounds(0, 0, dp(34), dp(34));
+                int shift = textShift(chip); // the padding moved the icon too; put it back in the middle
+                ringed.setBounds(0, -shift, dp(34), dp(34) - shift);
                 chip.setCompoundDrawables(ringed, null, null, null);
                 chip.setCompoundDrawablePadding(dp(10));
             } catch (Throwable ignored) {}
