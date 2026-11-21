@@ -179,6 +179,17 @@ final class Screensaver implements OverlayFactory {
         }
     };
 
+    /** A plain file name: no folders, no "." or "..", no control characters. */
+    static boolean safeFileName(String name) {
+        if (name == null || name.isEmpty() || name.length() > 255) return false;
+        if (name.equals(".") || name.equals("..")) return false;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c == '/' || c == '\\' || c < 32 || c == 127) return false;
+        }
+        return true;
+    }
+
     /** Main thread: a tap on the left or right of the photo. */
     private void step(int direction) {
         if (view == null || dark) return;
@@ -204,8 +215,16 @@ final class Screensaver implements OverlayFactory {
                 );
                 List<String> names = new ArrayList<>();
                 for (Object name : Net.list(index.get("photos"))) names.add(Net.str(name));
-                photos = names;
                 photoBase = Net.str(index.get("base"));
+                // The list file sits in Home Assistant's public www folder, so check it before signing anything:
+                // only media paths, and only plain file names (no folders, no "..").
+                if (!photoBase.startsWith("/media/") || photoBase.contains("..") || !photoBase.endsWith("/")) {
+                    photos = java.util.Collections.emptyList();
+                    plugin.log("Photo list: base must be a /media/... folder ending in /");
+                    return;
+                }
+                names.removeIf(n -> !safeFileName(n));
+                photos = names;
                 photosLoadedAt = System.currentTimeMillis();
                 leftInBlock = 0;
                 deck.clear();

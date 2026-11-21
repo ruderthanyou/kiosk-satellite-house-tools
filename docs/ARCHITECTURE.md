@@ -73,3 +73,13 @@ The plugin keeps almost nothing on the tablet's flash storage, so it doesn't wea
 - The only file is the moon fallback image (about 100 KB), rewritten at most every 6 hours.
 - The same log message is written at most once every 10 minutes, so a repeating error can't fill Kiosk Satellite's log.
 - Settings are saved only when someone changes one (for example the Auto-close switch).
+
+## Security notes
+
+- **Templates**: the room, entity and sensor settings are filtered to plain IDs (`a-z`, `0-9`, `_`, `.`) before they go into the Home Assistant template, so a setting can't change what the template does.
+- **Photo list**: the list file is in Home Assistant's public `www` folder, so the plugin accepts only a `/media/...` base and plain file names (no folders, no `..`) before asking Home Assistant to sign a link. Signed links last 5 minutes and are never logged: `authSig` values are hidden in every log line and in the Plugin message entity.
+- **Downloads** have size limits (photo list 2 MB, photo 40 MB, moon image 2 MB, face picture 5 MB) and images are scaled down while decoding.
+- **Text from Home Assistant** (alert names, people, lights) is shown as plain text, never as HTML.
+- **Touch tracking** notes only that a finger went down and when; it never sees key presses, text or touch positions.
+- **The optional Home Assistant address setting** receives signed photo links, so only point it at your own Home Assistant.
+- **Builds**: GitHub actions are pinned to exact commits; Prettier and its Java plugin are pinned versions. Kiosk Satellite only installs release files uploaded by GitHub Actions.

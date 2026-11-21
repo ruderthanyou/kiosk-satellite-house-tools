@@ -1054,6 +1054,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
      */
     void log(String message) {
         if (!alive) return;
+        // Never let a signed link's token reach the log or Home Assistant (exception texts can contain URLs).
+        message = message.replaceAll("authSig=[^&\\s\"']+", "authSig=(hidden)");
         long now = System.currentTimeMillis();
         synchronized (lastLogged) {
             Long last = lastLogged.get(message);
