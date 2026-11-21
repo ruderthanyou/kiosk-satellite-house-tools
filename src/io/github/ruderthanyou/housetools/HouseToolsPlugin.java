@@ -71,6 +71,11 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile String alarmEntity = "";
     private volatile String alertsEntity = "";
     private volatile String photoIndexPath = "/local/screensaver/photo_index.json";
+    private volatile boolean nightScreensaver;
+    private volatile String weatherEntity = "";
+    private volatile String moonFrames = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg";
+    private volatile Double forecastHigh, forecastLow;
+    private long forecastAt;
     private String publishedName;
     private volatile int photoSeconds = 30;
     private volatile int photoBlock = 1;
@@ -185,7 +190,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     /** What the live template depends on; a change re-subscribes. */
     private String houseSubscriptionKey() {
-        return area + "|" + garageEntity + "|" + alarmEntity + "|" + alertsEntity;
+        return area + "|" + garageEntity + "|" + alarmEntity + "|" + alertsEntity + "|" + weatherEntity;
     }
 
     /**
@@ -222,7 +227,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private void applyMode() {
         PluginHost h = host();
         if (h == null) return;
-        boolean want = useScreensaver && !dark;
+        boolean want = useScreensaver && (!dark || nightScreensaver);
         if (modeApplied != null && modeApplied == want) return;
         modeApplied = want;
         try {
@@ -329,6 +334,10 @@ public final class HouseToolsPlugin implements KioskPlugin {
         alertsEntity = entity(settings.get("alertsEntity"));
         String index = text(settings.get("photoIndexPath"), "/local/screensaver/photo_index.json");
         photoIndexPath = index.startsWith("/") ? index : "/" + index;
+        Object night = settings.get("nightScreensaver");
+        if (night instanceof Boolean) nightScreensaver = (Boolean) night;
+        weatherEntity = entity(settings.get("weatherEntity"));
+        moonFrames = text(settings.get("moonFrames"), moonFrames);
         photoSeconds = (int) clamp(settings.get("photoSeconds"), 10, 600, photoSeconds);
         photoBlock = (int) clamp(settings.get("photoBlock"), 1, 50, photoBlock);
         nightLux = clamp(settings.get("nightLux"), 0, 50, nightLux);
@@ -389,9 +398,14 @@ public final class HouseToolsPlugin implements KioskPlugin {
             + " 'hum': (states(ns2.h) | float(0) | round(0) | int) if ns2.h else none,"
             + " 'mode': states(cl) if cl else '', 'action': state_attr(cl,'hvac_action') if cl else '', 'target': state_attr(cl,'temperature') if cl else none} %}"
             + "{% set items = (state_attr(alerts,'items') if alerts else none) %}"
+            + "{% set wx = '" + weatherEntity + "' %}"
+            + "{% set weather = {'state': states(wx), 'temp': state_attr(wx,'temperature'), 'unit': state_attr(wx,'temperature_unit') or '',"
+            + " 'hum': state_attr(wx,'humidity'), 'wind': state_attr(wx,'wind_speed'), 'wind_unit': state_attr(wx,'wind_speed_unit') or '',"
+            + " 'cloud': state_attr(wx,'cloud_coverage')} if wx else {} %}"
             + "{{ {'area': (area_name(area) if area else '') or '', 'climate': clim, 'people': ns.p,"
             + " 'garage': states(garage) if garage else '', 'alarm': states(alarm) if alarm else '',"
-            + " 'alerts': (items if items is list else []), 'lights': ns.l} | to_json }}";
+            + " 'alerts': (items if items is list else []), 'lights': ns.l, 'weather': weather,"
+            + " 'sun': state_attr('sun.sun','elevation'), 'sun_az': state_attr('sun.sun','azimuth')} | to_json }}";
         Map<String, Object> message = new HashMap<>();
         message.put("type", "render_template");
         message.put("template", template);
@@ -413,6 +427,50 @@ public final class HouseToolsPlugin implements KioskPlugin {
     boolean isDark() { return dark; }
     String haUrl() { return haUrlSetting.isEmpty() ? ksHaUrl : haUrlSetting; }
     String photoIndexPath() { return photoIndexPath; }
+    boolean nightScreensaver() { return nightScreensaver; }
+    Double forecastHigh() { return forecastHigh; }
+    Double forecastLow() { return forecastLow; }
+
+    /** NASA's moon image for this hour of the year (frames numbered from 1 at 00:00 UTC on January 1). */
+    String moonUrl() {
+        java.util.Calendar utc = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+        int frame = (utc.get(java.util.Calendar.DAY_OF_YEAR) - 1) * 24 + utc.get(java.util.Calendar.HOUR_OF_DAY) + 1;
+        return moonFrames.replace("{frame}", String.format(java.util.Locale.US, "%04d", frame));
+    }
+
+    /** Today's high and low, refreshed every 30 minutes while the night screensaver is used. */
+    void refreshForecast() {
+        PluginHost h = host();
+        String wx = weatherEntity;
+        if (h == null || wx.isEmpty() || System.currentTimeMillis() - forecastAt < 30 * 60_000L) return;
+        forecastAt = System.currentTimeMillis();
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", "call_service");
+        message.put("domain", "weather");
+        message.put("service", "get_forecasts");
+        message.put("service_data", Collections.singletonMap("type", "daily"));
+        message.put("target", Collections.singletonMap("entity_id", wx));
+        message.put("return_response", true);
+        try {
+            h.haCall(message, (ok, data, error) -> {
+                if (!ok) { log("Forecast: " + error); forecastAt = 0; return; }
+                try {
+                    Map<String, Object> response = Net.map(Net.map(data).get("response"));
+                    List<Object> days = Net.list(Net.map(response.get(wx)).get("forecast"));
+                    if (days.isEmpty()) return;
+                    Map<String, Object> today = Net.map(days.get(0));
+                    Object hi = today.get("temperature"), lo = today.get("templow");
+                    forecastHigh = hi instanceof Number ? ((Number) hi).doubleValue() : null;
+                    forecastLow = lo instanceof Number ? ((Number) lo).doubleValue() : null;
+                    screensaver.dataChanged();
+                } catch (Throwable e) {
+                    log("Forecast: " + e);
+                }
+            });
+        } catch (Throwable e) {
+            log("Forecast: " + e);
+        }
+    }
     int photoSeconds() { return photoSeconds; }
     int photoBlock() { return photoBlock; }
     int alertMinutes() { return alertMinutes; }

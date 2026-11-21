@@ -115,6 +115,8 @@ final class Screensaver implements OverlayFactory {
         if (view == null) return;
         view.setNight(isDark);
         if (changed && !isDark) scheduleNextPhoto(0);
+        main.removeCallbacks(tick);
+        if (view.nightShown()) main.post(tick);
     }
 
     private void scheduleNextPhoto(long delayMs) {
@@ -216,6 +218,47 @@ final class Screensaver implements OverlayFactory {
         view.setPeople(Net.list(data.get("people")));
         view.setStatus(Net.str(data.get("garage")), Net.str(data.get("alarm")), Net.list(data.get("alerts")), Net.map(data.get("climate")));
         view.setLights(Net.str(data.get("area")), Net.list(data.get("lights")));
+        Object sun = data.get("sun");
+        Object azimuth = data.get("sun_az");
+        if (azimuth instanceof Number) view.sky.setSunAzimuth(((Number) azimuth).doubleValue());
+        view.setWeather(Net.map(data.get("weather")), sun instanceof Number ? ((Number) sun).doubleValue() : -30);
+    }
+
+    // ----- Night screen: clock tick and NASA moon -----
+
+    private String moonLoaded = "", moonLoading = "";
+
+    private final Runnable tick = new Runnable() {
+        @Override public void run() {
+            if (view == null || !view.nightShown()) return;
+            view.updateClock();
+            String url = plugin.moonUrl();
+            if (!url.equals(moonLoaded) && !url.equals(moonLoading)) loadMoon(url);
+            plugin.refreshForecast();
+            long now = System.currentTimeMillis();
+            main.postDelayed(this, 1000 - now % 1000 + 20);
+        }
+    };
+
+    private void loadMoon(String url) {
+        ExecutorService w = worker;
+        if (w == null) return;
+        moonLoading = url;
+        w.execute(() -> {
+            try {
+                Bitmap moon = Net.decode(Net.get(url, 2_000_000), 300, 300, false);
+                main.post(() -> {
+                    moonLoading = "";
+                    if (moon == null || view == null) return;
+                    moonLoaded = url;
+                    view.sky.setMoonPhoto(moon);
+                });
+            } catch (Throwable error) {
+                main.post(() -> moonLoading = "");
+                moonLoaded = url; // don't retry this hour; the drawn moon shows instead
+                plugin.log("Moon image: " + error.getMessage());
+            }
+        });
     }
 
     private void loadAvatar(String url, CircleImage target) {
@@ -304,6 +347,11 @@ final class Screensaver implements OverlayFactory {
         private ImageView back, front;
         private final View scrim;
         private final FlowRow topRow, lightsRow; // faces + status chips; this room's lights
+        private final LinearLayout content;       // the photo screen's chips column
+        private final FrameLayout nightLayer;     // the dark-room screen: sky, clock, weather
+        final SkyView sky;
+        private final TextView clock, date;
+        private final LinearLayout wxLeft, wxRight;
         private final java.util.List<View> people = new ArrayList<>(), status = new ArrayList<>();
         private final TextView hint;
 
@@ -331,6 +379,41 @@ final class Screensaver implements OverlayFactory {
             columnParams.leftMargin = dp(32);
             columnParams.rightMargin = dp(32);
             addView(column, columnParams);
+            content = column;
+
+            // Dark-room screen, like Weather Mood: animated sky, big clock and date, weather buttons along the bottom.
+            nightLayer = new FrameLayout(context);
+            nightLayer.setVisibility(GONE);
+            sky = new SkyView(context);
+            nightLayer.addView(sky, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            LinearLayout middle = new LinearLayout(context);
+            middle.setOrientation(LinearLayout.VERTICAL);
+            middle.setGravity(Gravity.CENTER_HORIZONTAL);
+            clock = new TextView(context);
+            theme.styleText(clock, 104, 300, "onSurface");
+            clock.setTextColor(0xFFF5F7FA);
+            clock.setIncludeFontPadding(false);
+            date = new TextView(context);
+            theme.styleText(date, 24, 400, "onSurface");
+            date.setTextColor(0xE6F5F7FA);
+            middle.addView(clock);
+            middle.addView(date);
+            LayoutParams middleParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            middleParams.gravity = Gravity.CENTER;
+            nightLayer.addView(middle, middleParams);
+            wxLeft = row(context);
+            LayoutParams leftParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            leftParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
+            leftParams.leftMargin = dp(12);
+            leftParams.bottomMargin = dp(12);
+            nightLayer.addView(wxLeft, leftParams);
+            wxRight = row(context);
+            LayoutParams rightParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            rightParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
+            rightParams.rightMargin = dp(12);
+            rightParams.bottomMargin = dp(12);
+            nightLayer.addView(wxRight, rightParams);
+            addView(nightLayer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
             topRow = new FlowRow(context, dp(8), dp(8));
             column.addView(topRow, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -383,7 +466,47 @@ final class Screensaver implements OverlayFactory {
             return row;
         }
 
+        boolean nightShown() { return nightLayer.getVisibility() == VISIBLE; }
+
+        void updateClock() {
+            java.util.Date now = new java.util.Date();
+            clock.setText(new java.text.SimpleDateFormat("h:mm a", java.util.Locale.US).format(now));
+            date.setText(new java.text.SimpleDateFormat("EEEE, MMMM d", java.util.Locale.US).format(now));
+        }
+
+        /** Weather Mood style buttons: condition and temperature on the left; high/low, humidity, wind on the right. */
+        void setWeather(Map<String, Object> w, double sunElevation) {
+            String state = Net.str(w.get("state"));
+            Object cloud = w.get("cloud");
+            Object windSpeed = w.get("wind");
+            sky.setWind(windSpeed instanceof Number ? ((Number) windSpeed).doubleValue() : 0);
+            sky.setWeather(state, sunElevation, cloud instanceof Number ? ((Number) cloud).doubleValue() : 0);
+            wxLeft.removeAllViews();
+            wxRight.removeAllViews();
+            if (state.isEmpty() || "unavailable".equals(state)) return;
+            String unit = Net.str(w.get("unit")).replace("°", "");
+            Object temp = w.get("temp");
+            String t = temp instanceof Number ? Math.round(((Number) temp).doubleValue()) + "°" + unit + "  " : "";
+            wxLeft.addView(chip(t + conditionName(state), conditionIcon(state), CHIP, TEXT));
+            Double hi = plugin.forecastHigh(), lo = plugin.forecastLow();
+            if (hi != null && lo != null) addRight(chip(Math.round(hi) + "° / " + Math.round(lo) + "°", "mdi:thermometer", CHIP, TEXT));
+            Object hum = w.get("hum");
+            if (hum instanceof Number) addRight(chip(Math.round(((Number) hum).doubleValue()) + "%", "mdi:water-outline", CHIP, TEXT));
+            Object wind = w.get("wind");
+            if (wind instanceof Number) addRight(chip(Math.round(((Number) wind).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", CHIP, TEXT));
+        }
+
+        private void addRight(View chip) {
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            if (wxRight.getChildCount() > 0) params.leftMargin = dp(10);
+            wxRight.addView(chip, params);
+        }
+
         void setNight(boolean night) {
+            boolean ours = night && plugin.nightScreensaver();
+            nightLayer.setVisibility(ours ? VISIBLE : GONE);
+            content.setVisibility(ours ? GONE : VISIBLE);
+            if (ours) updateClock();
             front.animate().alpha(night ? 0f : 1f).setDuration(800).start();
             back.animate().alpha(0f).setDuration(800).start();
             scrim.setAlpha(night ? 0f : 1f);
@@ -615,6 +738,43 @@ final class Screensaver implements OverlayFactory {
         @Override public void setAlpha(int alpha) { ring.setAlpha(alpha); icon.setAlpha(alpha); }
         @Override public void setColorFilter(android.graphics.ColorFilter filter) { icon.setColorFilter(filter); }
         @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
+    static String conditionName(String state) {
+        switch (state) {
+            case "clear-night": case "sunny": return "Clear";
+            case "partlycloudy": return "Partly cloudy";
+            case "cloudy": return "Cloudy";
+            case "fog": return "Fog";
+            case "hail": return "Hail";
+            case "lightning": case "lightning-rainy": return "Storms";
+            case "pouring": return "Heavy rain";
+            case "rainy": return "Rain";
+            case "snowy": return "Snow";
+            case "snowy-rainy": return "Sleet";
+            case "windy": case "windy-variant": return "Windy";
+            case "exceptional": return "Severe";
+            default: return capital(state.replace('-', ' '));
+        }
+    }
+
+    static String conditionIcon(String state) {
+        switch (state) {
+            case "clear-night": return "mdi:weather-night";
+            case "sunny": return "mdi:weather-sunny";
+            case "partlycloudy": return "mdi:weather-partly-cloudy";
+            case "cloudy": return "mdi:weather-cloudy";
+            case "fog": return "mdi:weather-fog";
+            case "hail": return "mdi:weather-hail";
+            case "lightning": return "mdi:weather-lightning";
+            case "lightning-rainy": return "mdi:weather-lightning-rainy";
+            case "pouring": return "mdi:weather-pouring";
+            case "rainy": return "mdi:weather-rainy";
+            case "snowy": return "mdi:weather-snowy";
+            case "snowy-rainy": return "mdi:weather-snowy-rainy";
+            case "windy": case "windy-variant": return "mdi:weather-windy";
+            default: return "mdi:weather-cloudy";
+        }
     }
 
     static String capital(String s) { return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1); }
