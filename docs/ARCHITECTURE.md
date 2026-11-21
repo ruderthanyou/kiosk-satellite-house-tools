@@ -29,7 +29,7 @@ Home Assistant ──render_template──▶ HouseToolsPlugin.houseData ──�
 
 Kiosk Satellite ──device.light──▶ dark or lit ──▶ setScreensaverMode / clearScreensaverMode
                 ──getDashboardState──▶ Home Assistant's address (for downloads)
-NASA SVS ──hourly moon image──▶ SkyView
+NASA SVS ──hourly moon image──▶ SkyView (last good image saved in the app's cache)
 ```
 
 One `render_template` subscription carries everything the screens show. Home Assistant re-sends it whenever anything in it changes, so the plugin never polls entities. The template only reads entities named in the settings (and the room's area), so nothing about a particular house is built in.
@@ -53,6 +53,7 @@ There's a little hysteresis (3 lux) so a reading on the line doesn't flip back a
 ## Sky math
 
 - **Stars**: right ascension and declination from the catalog, converted to altitude and azimuth with local sidereal time from the current time and the home's longitude.
+- **Moon photo**: NASA's image for the current hour, downloaded while the night screen shows. The last good one is kept in memory for every new screensaver and saved in the app's cache for restarts; a failed download keeps it and retries after 10 minutes.
 - **Moon**: a low-precision lunar position (mean longitude, anomaly and argument of latitude, with the main correction terms), good to about a degree, then the same conversion.
 - **Sun**: Home Assistant's `sun.sun` azimuth and elevation.
 - **Screen**: looking toward the equator, azimuth 90 degrees either side of it across the width, altitude 0 to 75 degrees from the bottom up. Below the equator the view turns to face north and NASA's south-up moon images are used.
