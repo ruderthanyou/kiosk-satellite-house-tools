@@ -36,11 +36,13 @@ One `render_template` subscription carries everything the screens show. Home Ass
 
 ## Room light
 
-The tablet's light sensor sits next to the screen, so the screen's own glow moves the reading whenever brightness changes. Fed straight into automatic brightness, that makes a loop that can flicker between two levels. The plugin breaks it:
+The tablet's light sensor sits next to the screen, so the screen's own glow raises the reading as the screen gets brighter. Fed straight into automatic brightness, that makes a loop that flickers between two levels. The plugin breaks it three ways:
 
-- It averages the raw reading over about 45 seconds (fed in again every 5 seconds, since the sensor only reports changes).
-- It publishes a **Room light** entity that changes only when the light really does: by more than 25% and more than 2 lux.
-- Kiosk Satellite's automatic brightness can follow that entity (Screen > Adaptive brightness > use a Home Assistant entity), and the screensaver's dark/lit choice uses the same value.
+- **Glow correction**: when the screen's brightness changes (Kiosk Satellite's `screen.brightness` event), the jump in the reading 4 seconds later is the screen's own light. The plugin learns that amount per unit of brightness (a slow average, ignoring samples where the room clearly changed too) and subtracts it.
+- **Averaging** over about 45 seconds (the last reading is fed in again every 5 seconds, since the sensor only reports changes).
+- **Hold**: the **Room light** entity changes at most once a minute, and only for a real change (at least 50% and 2 lux).
+
+Kiosk Satellite's automatic brightness can follow that entity (Screen > Adaptive brightness > use a Home Assistant entity), and the screensaver's dark/lit choice uses the same value.
 
 ## Which screensaver shows
 

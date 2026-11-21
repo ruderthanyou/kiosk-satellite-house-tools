@@ -166,6 +166,14 @@ public final class HouseToolsPlugin implements KioskPlugin {
         } catch (Throwable error) {
             log("Light sensor: " + error);
         }
+        try {
+            host.subscribe("screen.brightness");
+            host.executeCommand("getBrightness", Collections.singletonMap("panel", (Object) true), (ok, data, error) -> {
+                if (ok && data instanceof Number) panel = ((Number) data).doubleValue();
+            });
+        } catch (Throwable error) {
+            log("Screen brightness: " + error);
+        }
         // The event only fires on a change, so read the current level once: a room that stays dark
         // would otherwise never tell us.
         try {
@@ -339,6 +347,11 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     @Override
     public void onEvent(String event, Map<String, Object> payload) {
+        if ("ks.screen.brightness".equals(event)) {
+            Object p = payload.get("panel");
+            if (p instanceof Number) learnGlow(((Number) p).doubleValue());
+            return;
+        }
         if ("ks.device.light".equals(event)) {
             lightReading(payload.get("lux"));
             return;
@@ -462,35 +475,48 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     // ----- Room light: a steady light level, for the screensaver and for Kiosk Satellite's brightness -----
 
-    private double lightAverage = Double.NaN; // smoothed reading
+    private double lightAverage = Double.NaN; // smoothed, glow-corrected reading
     private long lightAverageAt;
     private Double lightPublished; // last value sent as the Room light entity
+    private long lightPublishedAt;
+    private volatile Double lightRaw; // latest raw reading, fed in again every 5 s so the average keeps moving
+    private volatile double panel = Double.NaN; // current screen brightness, 0..1
+    private volatile double glow = 0; // learned: lux the sensor gains per unit of screen brightness
 
     /**
      * Raw readings from the tablet's light sensor. The sensor sits next to the screen, so the screen's own glow
-     * moves the reading as brightness changes; fed straight back into automatic brightness that makes a loop
-     * that can flicker. So the reading is averaged over about 45 seconds, and the Room light entity only
-     * changes when the light really does (by more than 25% and more than 2 lux). Kiosk Satellite's automatic
-     * brightness is set to follow that entity, and the screensaver's dark/lit choice uses the same value.
+     * raises the reading as the screen gets brighter; fed straight into automatic brightness that makes a loop
+     * that flickers. Three things break it:
+     * <ol>
+     *   <li>Glow correction: when the screen's brightness changes, the jump in the reading right after is the
+     *       screen's own light ({@link #learnGlow}); that amount per unit of brightness is subtracted.</li>
+     *   <li>Averaging over about 45 seconds.</li>
+     *   <li>The Room light entity changes at most once a minute, and only for a real change (at least 50% and
+     *       2 lux), except at the very first reading.</li>
+     * </ol>
+     * Kiosk Satellite's automatic brightness follows that entity, and the screensaver's dark/lit choice uses it.
      */
-    private volatile Double lightRaw; // latest raw reading, fed in again every 5 s so the average keeps moving
-
     private synchronized void lightReading(Object lux) {
         if (!(lux instanceof Number)) return;
-        double v = Math.max(0, ((Number) lux).doubleValue());
-        lightRaw = v;
+        double raw = Math.max(0, ((Number) lux).doubleValue());
+        lightRaw = raw;
+        double p = Double.isNaN(panel) ? 0 : panel;
+        double v = Math.max(0, raw - glow * p);
         long now = System.currentTimeMillis();
         if (Double.isNaN(lightAverage)) {
             lightAverage = v;
         } else {
             double dt = Math.max(0, now - lightAverageAt) / 1000.0;
-            double alpha = 1 - Math.exp(-dt / 45.0);
-            lightAverage += (v - lightAverage) * alpha;
+            lightAverage += (v - lightAverage) * (1 - Math.exp(-dt / 45.0));
         }
         lightAverageAt = now;
         double level = lightAverage;
-        if (lightPublished == null || Math.abs(level - lightPublished) > Math.max(2.0, 0.25 * lightPublished)) {
+        boolean first = lightPublished == null;
+        boolean real = !first && Math.abs(level - lightPublished) >= 2.0
+            && (level >= lightPublished * 1.5 || level <= lightPublished / 1.5);
+        if (first || (real && now - lightPublishedAt >= 60_000L)) {
             lightPublished = (double) Math.round(level);
+            lightPublishedAt = now;
             try {
                 host.publishSensor("room_light", "Room light", lightMeta(), lightPublished);
             } catch (Throwable ignored) {}
@@ -503,6 +529,26 @@ public final class HouseToolsPlugin implements KioskPlugin {
             screensaver.darkChanged(nowDark);
         }
         applyMode();
+    }
+
+    /**
+     * The screen's brightness changed (Kiosk Satellite event). Note the reading before, look again 4 seconds
+     * later: the difference per unit of brightness is the screen's own glow on the sensor. Kept as a slow
+     * average and capped, so a lamp switched on at the same moment can't throw it far off.
+     */
+    private void learnGlow(double newPanel) {
+        double before = Double.isNaN(panel) ? newPanel : panel;
+        panel = newPanel;
+        Double rawBefore = lightRaw;
+        if (rawBefore == null || Math.abs(newPanel - before) < 0.15) return;
+        final double change = newPanel - before;
+        main.postDelayed(() -> {
+            Double rawAfter = lightRaw;
+            if (!alive || rawAfter == null) return;
+            double sample = (rawAfter - rawBefore) / change;
+            if (sample < 0 || sample > 60) return; // the room changed too, not just the screen
+            glow = glow == 0 ? sample : glow * 0.7 + sample * 0.3;
+        }, 4_000);
     }
 
     private static Map<String, Object> lightMeta() {
