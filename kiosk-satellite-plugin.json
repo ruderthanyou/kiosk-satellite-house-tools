@@ -3,14 +3,22 @@
   "apiVersion": 1,
   "id": "house-tools",
   "name": "House Tools",
-  "version": "0.4.16",
+  "version": "0.4.17",
   "minAndroidSdk": 24,
   "minAppVersion": "2026.11.14",
   "entryClass": "io.github.ruderthanyou.housetools.HouseToolsPlugin",
   "description": "Small helpers for always-on tablets. Screensaver: family photos at random with face chips, inside climate, house status and this room's lights you can tap (tap the middle to close, the sides to change photos). Alert banner: alerts as a bar at the top that hides itself after a few minutes. Auto-close: closes windows left on top, such as the Google Assistant pop-up. Touch tracking: Last touched and In use.",
   "author": "ruderthanyou",
   "license": "MIT",
-  "capabilities": ["entities", "overlay", "screensaver", "screensaver.mode", "host.read", "host.control", "ha"],
+  "capabilities": [
+    "entities",
+    "overlay",
+    "screensaver",
+    "screensaver.mode",
+    "host.read",
+    "host.control",
+    "ha"
+  ],
   "icon": "icon.png",
   "settings": [
     {
@@ -44,6 +52,14 @@
       "unit": "min",
       "group": "Touch tracking",
       "description": "The In use sensor stays on this long after the last touch."
+    },
+    {
+      "key": "holdPages",
+      "type": "string",
+      "title": "Hold the screensaver on pages",
+      "default": "^/(config|developer-tools|hassio|profile)(/|$)|^/[0-9a-f]{8}_[a-z0-9_]+(/|$)",
+      "group": "Touch tracking",
+      "description": "A regular expression for page paths where the screensaver waits until you leave: Home Assistant's settings and add-on panels by default, where people read, type or dictate without touching the screen. Empty turns it off."
     },
     {
       "key": "useScreensaver",

@@ -108,6 +108,12 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private Boolean modeApplied; // what setScreensaverMode last did: true = ours, false = cleared
     private volatile boolean alertBannerOn = true;
     private volatile int alertMinutes = 5;
+    // Pages where the screensaver waits (settings and add-on screens, where people read and type or dictate).
+    static final String DEFAULT_HOLD_PAGES =
+        "^/(config|developer-tools|hassio|profile)(/|$)|^/[0-9a-f]{8}_[a-z0-9_]+(/|$)";
+    private volatile java.util.regex.Pattern holdPages = java.util.regex.Pattern.compile(DEFAULT_HOLD_PAGES);
+    private volatile boolean pageHeld; // our holdScreensaver hold is on
+    private long pageCheckedAt;
 
     // Screensaver and alert banner.
     private final Screensaver screensaver = new Screensaver(this);
@@ -426,6 +432,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
     @Override
     public void stop() {
         alive = false;
+        setPageHold(false); // never leave the screensaver held after we're gone
         main.removeCallbacksAndMessages(null);
         Application application = app;
         Application.ActivityLifecycleCallbacks registered = callbacks;
@@ -478,6 +485,13 @@ public final class HouseToolsPlugin implements KioskPlugin {
         Object banner = settings.get("alertBanner");
         if (banner instanceof Boolean) alertBannerOn = (Boolean) banner;
         alertMinutes = (int) clamp(settings.get("alertMinutes"), 1, 60, alertMinutes);
+        String hold = text(settings.get("holdPages"), DEFAULT_HOLD_PAGES);
+        try {
+            holdPages = hold.isEmpty() ? null : java.util.regex.Pattern.compile(hold);
+        } catch (RuntimeException bad) {
+            log("Hold pages: not a valid pattern, using the default");
+            holdPages = java.util.regex.Pattern.compile(DEFAULT_HOLD_PAGES);
+        }
         Object minutes = settings.get("inUseMinutes");
         if (minutes instanceof Number) {
             double value = ((Number) minutes).doubleValue();
@@ -866,6 +880,46 @@ public final class HouseToolsPlugin implements KioskPlugin {
         main.post(poll);
     }
 
+    /**
+     * Every 4 seconds: is the browser on a page from Hold pages (settings, add-on panels)? Then the screensaver's idle
+     * timer is held, since talking to the keyboard's voice typing or reading a long answer doesn't touch the screen.
+     * Leaving the page lets go, and the countdown starts again.
+     */
+    private void holdOnPage() {
+        long now = SystemClock.elapsedRealtime();
+        if (now - pageCheckedAt < 4_000L) return;
+        pageCheckedAt = now;
+        PluginHost h = host();
+        if (h == null) return;
+        try {
+            h.executeCommand("getDashboardState", Collections.emptyMap(), (ok, data, error) -> {
+                if (!ok || !(data instanceof Map)) return;
+                java.util.regex.Pattern pattern = holdPages;
+                String path = Net.str(((Map<?, ?>) data).get("currentPath"));
+                setPageHold(pattern != null && pattern.matcher(path).find());
+            });
+        } catch (Throwable error) {
+            log("Hold pages: " + error);
+        }
+    }
+
+    private void setPageHold(boolean held) {
+        if (held == pageHeld) return;
+        PluginHost h = host();
+        if (h == null) return;
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("holder", "house_tools_page");
+        params.put("held", held);
+        try {
+            h.executeCommand("holdScreensaver", params, (ok, data, error) -> {
+                if (ok) pageHeld = held;
+                else log("Hold screensaver: " + error);
+            });
+        } catch (Throwable error) {
+            log("Hold screensaver: " + error);
+        }
+    }
+
     /** Every 5 minutes: put our screensaver choice back and reconnect the house data if it went quiet. */
     private void healthCheck() {
         long now = System.currentTimeMillis();
@@ -886,6 +940,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     private void check() {
         healthCheck();
+        holdOnPage();
         // The sensor only reports changes; keep the average moving toward a reading that has stopped changing.
         Double raw = lightRaw;
         if (raw != null) lightReading(raw);

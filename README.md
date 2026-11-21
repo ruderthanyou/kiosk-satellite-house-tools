@@ -70,9 +70,12 @@ It only acts when Kiosk Satellite is still showing underneath and has lost focus
 
 Reports when the screen was last touched, and an **In use** flag that stays on for a few minutes (5 by default) after the last touch. Only finger-down events are counted; touches pass through to Kiosk Satellite unchanged.
 
+On pages matching **Hold the screensaver on pages** the plugin holds Kiosk Satellite's screensaver timer (`holdScreensaver`) and lets go when you leave, so a long answer or voice typing in an add-on panel isn't covered by the screensaver.
+
 | Setting    | Default | Meaning                                |
 | ---------- | ------- | -------------------------------------- |
 | In use for | 5 min   | How long In use stays on after a touch |
+| Hold the screensaver on pages | Home Assistant settings and add-on panels | A regular expression for page paths where the screensaver waits until you leave (reading, typing or dictating doesn't touch the screen). Empty turns it off |
 
 ## Home Assistant entities (through Kiosk Satellite's ESPHome connection)
 
