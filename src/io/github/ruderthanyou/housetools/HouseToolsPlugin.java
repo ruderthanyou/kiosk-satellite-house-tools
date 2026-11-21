@@ -118,6 +118,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
     // Screensaver and alert banner.
     private final Screensaver screensaver = new Screensaver(this);
     private final AlertBanner banner = new AlertBanner(this);
+    private final VoiceSkin voiceSkin = new VoiceSkin(this);
+    private volatile String voiceTitle = "";
     private volatile Map<String, Object> houseData = Screensaver.emptyData();
     private volatile boolean dark;
     private String subscribedArea;
@@ -203,6 +205,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
         readHaUrl();
         subscribeHouse();
         applyMode();
+        voiceSkin.start(host);
     }
 
     @Override
@@ -363,6 +366,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     @Override
     public void onEvent(String event, Map<String, Object> payload) {
+        if (voiceSkin.onEvent(event, payload)) return;
         if ("ks.screen.brightness".equals(event)) {
             Object p = payload.get("panel");
             if (p instanceof Number) learnGlow(((Number) p).doubleValue());
@@ -433,6 +437,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
     public void stop() {
         alive = false;
         setPageHold(false); // never leave the screensaver held after we're gone
+        voiceSkin.stop();
         main.removeCallbacksAndMessages(null);
         Application application = app;
         Application.ActivityLifecycleCallbacks registered = callbacks;
@@ -485,6 +490,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
         Object banner = settings.get("alertBanner");
         if (banner instanceof Boolean) alertBannerOn = (Boolean) banner;
         alertMinutes = (int) clamp(settings.get("alertMinutes"), 1, 60, alertMinutes);
+        voiceTitle = text(settings.get("voiceTitle"), "");
         String hold = text(settings.get("holdPages"), DEFAULT_HOLD_PAGES);
         try {
             holdPages = hold.isEmpty() ? null : java.util.regex.Pattern.compile(hold);
@@ -732,6 +738,11 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     boolean nightScreensaver() {
         return nightScreensaver;
+    }
+
+    /** The house name over the voice skin's logo; empty for none. */
+    String voiceTitle() {
+        return voiceTitle;
     }
 
     boolean softText() {

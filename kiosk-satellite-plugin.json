@@ -3,14 +3,24 @@
   "apiVersion": 1,
   "id": "house-tools",
   "name": "House Tools",
-  "version": "0.4.17",
+  "version": "0.5.0",
   "minAndroidSdk": 24,
   "minAppVersion": "2026.11.14",
   "entryClass": "io.github.ruderthanyou.housetools.HouseToolsPlugin",
   "description": "Small helpers for always-on tablets. Screensaver: family photos at random with face chips, inside climate, house status and this room's lights you can tap (tap the middle to close, the sides to change photos). Alert banner: alerts as a bar at the top that hides itself after a few minutes. Auto-close: closes windows left on top, such as the Google Assistant pop-up. Touch tracking: Last touched and In use.",
   "author": "ruderthanyou",
   "license": "MIT",
-  "capabilities": ["entities", "overlay", "screensaver", "screensaver.mode", "host.read", "host.control", "ha"],
+  "capabilities": [
+    "entities",
+    "overlay",
+    "screensaver",
+    "screensaver.mode",
+    "host.read",
+    "host.control",
+    "ha",
+    "voice.skin",
+    "voice.text"
+  ],
   "icon": "icon.png",
   "settings": [
     {
@@ -230,6 +240,14 @@
       "unit": "min",
       "group": "Alert banner",
       "description": "The banner hides itself after this long, or when tapped. A new alert brings it back."
+    },
+    {
+      "key": "voiceTitle",
+      "type": "string",
+      "title": "Name over the logo",
+      "default": "",
+      "group": "Voice skin",
+      "description": "Shown in small capitals above the house logo when the House Tools voice skin answers. Pick the skin under Voice Satellite > Appearance."
     }
   ],
   "commands": [

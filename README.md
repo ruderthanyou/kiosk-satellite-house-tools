@@ -77,6 +77,19 @@ On pages matching **Hold the screensaver on pages** the plugin holds Kiosk Satel
 | In use for                    | 5 min                                     | How long In use stays on after a touch                                                                                                                      |
 | Hold the screensaver on pages | Home Assistant settings and add-on panels | A regular expression for page paths where the screensaver waits until you leave (reading, typing or dictating doesn't touch the screen). Empty turns it off |
 
+## Voice skin
+
+House Tools can draw Kiosk Satellite's voice overlay in its own look. Pick **House Tools** under **Voice Satellite > Appearance > Assistant 1 skin** (or **Assistant 2 skin**).
+
+- **Full screen:** a deep navy backdrop with slowly drifting lights. The house logo draws itself in: the roof from eave to peak to eave, then the D. While you speak the roof lifts and glows and rings ripple out from the house. While the assistant thinks, a comet circles the house. What you said shows in quotes, then the answer rises in.
+- **Docked:** the same logo, small, in a navy card at the bottom of the screen with the words beside it.
+
+It follows the Appearance settings Background, Text size and Reactive activity bar. The palette always matches the logo. Touches pass through, so a double tap still dismisses the turn.
+
+| Setting            | Default | Meaning                                       |
+| ------------------ | ------- | --------------------------------------------- |
+| Name over the logo | empty   | Small capitals above the logo, such as a home name |
+
 ## Home Assistant entities (through Kiosk Satellite's ESPHome connection)
 
 | Entity                                  | Meaning                                                                                        |
