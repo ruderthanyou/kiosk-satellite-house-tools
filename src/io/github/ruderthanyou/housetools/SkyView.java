@@ -10,6 +10,8 @@ import android.graphics.LightingColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -117,9 +119,12 @@ final class SkyView extends View {
         canvas.drawRect(0, 0, w, h, paint);
         paint.setShader(null);
 
-        // Stars on clear nights, twinkling.
+        // Stars on clear nights, twinkling. None where the moon is: it blocks them, dark side included.
+        float moonX = w * 0.84f, moonY = h * 0.22f, moonR = 34 * density * 1.08f;
         if (night && !cloudy()) {
             for (int i = 0; i < STARS; i++) {
+                float dx = sx[i] * w - moonX, dy = sy[i] * h - moonY;
+                if (dx * dx + dy * dy < moonR * moonR) continue;
                 float a = 0.35f + 0.65f * (0.5f + 0.5f * (float) Math.sin(t * (0.6 + (i % 5) * 0.25) + sp[i]));
                 paint.setColor(((int) (a * 230) << 24) | 0xFFFFFF);
                 canvas.drawCircle(sx[i] * w, sy[i] * h, ss[i] * density * 0.8f, paint);
@@ -257,7 +262,11 @@ final class SkyView extends View {
             shader.setLocalMatrix(m);
             paint.setShader(shader);
             paint.setAlpha(255);
+            // Screen blend: the lit side shows as NASA drew it; the dark side adds nothing, so the sky shows through
+            // just as it does outside.
+            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
             canvas.drawCircle(cx, cy, r, paint);
+            paint.setXfermode(null);
             paint.setShader(null);
             return;
         }
