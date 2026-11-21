@@ -10,7 +10,8 @@ A screensaver for a lit room, shown under the name you choose (Home Screensaver 
 - Tap the right side for the next photo and the left side for the previous one. Tap the middle to close. A double tap also closes it.
 - Chips in the style of Weather Mood's buttons: faces (gray when away), **Inside** temperature and humidity for the room, the thermostat when it's on, the garage door, the alarm and any alert.
 - This room's lights as buttons. Tap one to switch it. When a light group exists, its numbered bulbs are left out.
-- The rows wrap instead of cutting off. Kiosk Satellite's corner widgets (clock, Outside weather, dew point), Now Playing card and pixel shift all work on top of it.
+- Its own corners: clock and date (top left), Outside weather with today's high and low (bottom right), and the dew point colored by comfort with the humidity under it (bottom left). Turn off Kiosk Satellite's corner widgets to avoid doubles.
+- The rows wrap instead of cutting off. Kiosk Satellite's Now Playing card and pixel shift work on top of it.
 
 Home Assistant's address comes from Kiosk Satellite, so there's nothing to set for it. Photos come from a list file in Home Assistant's `www` folder: `{"base": "/media/local/photos/", "photos": ["a.jpg", ...]}`. Each photo is downloaded through a signed Home Assistant link, so the photos themselves stay private.
 

@@ -116,7 +116,7 @@ final class Screensaver implements OverlayFactory {
         view.setNight(isDark);
         if (changed && !isDark) scheduleNextPhoto(0);
         main.removeCallbacks(tick);
-        if (view.nightShown()) main.post(tick);
+        main.post(tick);
     }
 
     private void scheduleNextPhoto(long delayMs) {
@@ -230,10 +230,12 @@ final class Screensaver implements OverlayFactory {
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
-            if (view == null || !view.nightShown()) return;
+            if (view == null) return;
             view.updateClock();
-            String url = plugin.moonUrl();
-            if (!url.equals(moonLoaded) && !url.equals(moonLoading)) loadMoon(url);
+            if (view.nightShown()) {
+                String url = plugin.moonUrl();
+                if (!url.equals(moonLoaded) && !url.equals(moonLoading)) loadMoon(url);
+            }
             plugin.refreshForecast();
             long now = System.currentTimeMillis();
             main.postDelayed(this, 1000 - now % 1000 + 20);
@@ -352,6 +354,9 @@ final class Screensaver implements OverlayFactory {
         final SkyView sky;
         private final TextView clock, date;
         private final LinearLayout wxLeft, wxRight;
+        // Photo screen corners: clock and date (top left), dew point (bottom left), Outside weather (bottom right).
+        private final TextView dayClock, dayDate, dewValue, dewLabel;
+        private final LinearLayout dayClockBox, dewBox, dayWeather;
         private final java.util.List<View> people = new ArrayList<>(), status = new ArrayList<>();
         private final TextView hint;
 
@@ -380,6 +385,38 @@ final class Screensaver implements OverlayFactory {
             columnParams.rightMargin = dp(32);
             addView(column, columnParams);
             content = column;
+
+            dayClockBox = new LinearLayout(context);
+            dayClockBox.setOrientation(LinearLayout.VERTICAL);
+            dayClock = shadowed(context, 56, 400);
+            dayClock.setIncludeFontPadding(false);
+            dayDate = shadowed(context, 20, 400);
+            dayClockBox.addView(dayClock);
+            dayClockBox.addView(dayDate);
+            LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            clockParams.gravity = Gravity.TOP | Gravity.LEFT;
+            clockParams.leftMargin = dp(24);
+            clockParams.topMargin = dp(16);
+            addView(dayClockBox, clockParams);
+
+            dewBox = new LinearLayout(context);
+            dewBox.setOrientation(LinearLayout.VERTICAL);
+            dewValue = shadowed(context, 40, 600);
+            dewLabel = shadowed(context, 15, 400);
+            dewBox.addView(dewValue);
+            dewBox.addView(dewLabel);
+            LayoutParams dewParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            dewParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
+            dewParams.leftMargin = dp(24);
+            dewParams.bottomMargin = dp(16);
+            addView(dewBox, dewParams);
+
+            dayWeather = row(context);
+            LayoutParams dwParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            dwParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
+            dwParams.rightMargin = dp(16);
+            dwParams.bottomMargin = dp(16);
+            addView(dayWeather, dwParams);
 
             // Dark-room screen, like Weather Mood: animated sky, big clock and date, weather buttons along the bottom.
             nightLayer = new FrameLayout(context);
@@ -468,10 +505,22 @@ final class Screensaver implements OverlayFactory {
 
         boolean nightShown() { return nightLayer.getVisibility() == VISIBLE; }
 
+        private TextView shadowed(Context context, float sp, int weight) {
+            TextView t = new TextView(context);
+            theme.styleText(t, sp, weight, "onSurface");
+            t.setTextColor(0xFFF5F7FA);
+            t.setShadowLayer(dp(6), 0, dp(1), 0xCC000000);
+            return t;
+        }
+
         void updateClock() {
             java.util.Date now = new java.util.Date();
-            clock.setText(new java.text.SimpleDateFormat("h:mm a", java.util.Locale.US).format(now));
-            date.setText(new java.text.SimpleDateFormat("EEEE, MMMM d", java.util.Locale.US).format(now));
+            String time = new java.text.SimpleDateFormat("h:mm a", java.util.Locale.US).format(now);
+            String day = new java.text.SimpleDateFormat("EEEE, MMMM d", java.util.Locale.US).format(now);
+            clock.setText(time);
+            date.setText(day);
+            dayClock.setText(time);
+            dayDate.setText(day);
         }
 
         /** Weather Mood style buttons: condition and temperature on the left; high/low, humidity, wind on the right. */
@@ -483,7 +532,31 @@ final class Screensaver implements OverlayFactory {
             sky.setWeather(state, sunElevation, cloud instanceof Number ? ((Number) cloud).doubleValue() : 0);
             wxLeft.removeAllViews();
             wxRight.removeAllViews();
+            dayWeather.removeAllViews();
+            dewBox.setVisibility(GONE);
             if (state.isEmpty() || "unavailable".equals(state)) return;
+            // Photo screen: Outside weather bottom right, dew point bottom left.
+            {
+                String u = Net.str(w.get("unit")).replace("°", "");
+                Object tt = w.get("temp");
+                String label = "Outside " + (tt instanceof Number ? Math.round(((Number) tt).doubleValue()) + "°" + u + "  " : "") + conditionName(state);
+                dayWeather.addView(chip(label, conditionIcon(state), CHIP, TEXT));
+                Double h = plugin.forecastHigh(), l = plugin.forecastLow();
+                if (h != null && l != null) {
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                    lp.leftMargin = dp(10);
+                    dayWeather.addView(chip(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", CHIP, TEXT), lp);
+                }
+                Object dew = w.get("dew"), hum = w.get("hum");
+                if (dew instanceof Number) {
+                    double d = ((Number) dew).doubleValue();
+                    boolean celsius = u.toUpperCase(java.util.Locale.US).contains("C");
+                    dewValue.setText(Math.round(d) + "°");
+                    dewValue.setTextColor(dewColor(celsius ? d * 9 / 5 + 32 : d));
+                    dewLabel.setText("Dew point" + (hum instanceof Number ? "  ·  " + Math.round(((Number) hum).doubleValue()) + "% humidity" : ""));
+                    dewBox.setVisibility(nightShown() ? GONE : VISIBLE);
+                }
+            }
             String unit = Net.str(w.get("unit")).replace("°", "");
             Object temp = w.get("temp");
             String t = temp instanceof Number ? Math.round(((Number) temp).doubleValue()) + "°" + unit + "  " : "";
@@ -506,6 +579,10 @@ final class Screensaver implements OverlayFactory {
             boolean ours = night && plugin.nightScreensaver();
             nightLayer.setVisibility(ours ? VISIBLE : GONE);
             content.setVisibility(ours ? GONE : VISIBLE);
+            int corners = ours ? GONE : VISIBLE;
+            dayClockBox.setVisibility(corners);
+            dayWeather.setVisibility(corners);
+            if (ours) dewBox.setVisibility(GONE);
             if (ours) updateClock();
             front.animate().alpha(night ? 0f : 1f).setDuration(800).start();
             back.animate().alpha(0f).setDuration(800).start();
@@ -738,6 +815,17 @@ final class Screensaver implements OverlayFactory {
         @Override public void setAlpha(int alpha) { ring.setAlpha(alpha); icon.setAlpha(alpha); }
         @Override public void setColorFilter(android.graphics.ColorFilter filter) { icon.setColorFilter(filter); }
         @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
+    /** Dew point comfort colors (°F): dry and comfortable blues/greens up to muggy reds. */
+    static int dewColor(double f) {
+        if (f < 50) return 0xFF82C8FF;
+        if (f < 55) return 0xFF6FD08C;
+        if (f < 60) return 0xFFB5D96A;
+        if (f < 65) return 0xFFF2D45C;
+        if (f < 70) return 0xFFF5A04A;
+        if (f < 75) return 0xFFEF5350;
+        return 0xFFC62828;
     }
 
     static String conditionName(String state) {

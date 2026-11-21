@@ -413,7 +413,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
             + "{% set items = (state_attr(alerts,'items') if alerts else none) %}"
             + "{% set wx = '" + weatherEntity + "' %}"
             + "{% set weather = {'state': states(wx), 'temp': state_attr(wx,'temperature'), 'unit': state_attr(wx,'temperature_unit') or '',"
-            + " 'hum': state_attr(wx,'humidity'), 'wind': state_attr(wx,'wind_speed'), 'wind_unit': state_attr(wx,'wind_speed_unit') or '',"
+            + " 'hum': state_attr(wx,'humidity'), 'dew': state_attr(wx,'dew_point'), 'wind': state_attr(wx,'wind_speed'), 'wind_unit': state_attr(wx,'wind_speed_unit') or '',"
             + " 'cloud': state_attr(wx,'cloud_coverage')} if wx else {} %}"
             + "{{ {'area': (area_name(area) if area else '') or '', 'climate': clim, 'people': ns.p,"
             + " 'garage': states(garage) if garage else '', 'alarm': states(alarm) if alarm else '',"
