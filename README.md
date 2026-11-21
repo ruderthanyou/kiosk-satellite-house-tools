@@ -81,10 +81,10 @@ On pages matching **Hold the screensaver on pages** the plugin holds Kiosk Satel
 
 House Tools can draw Kiosk Satellite's voice overlay in its own look. Pick **House Tools** under **Voice Satellite > Appearance > Assistant 1 skin** (or **Assistant 2 skin**).
 
-- **Full screen:** a deep navy backdrop with slowly drifting lights. The house logo draws itself in: the roof from eave to peak to eave, then the D. While you speak the roof lifts and glows and rings ripple out from the house. While the assistant thinks, a comet circles the house. What you said shows in quotes, then the answer rises in.
+- **Full screen:** a deep navy backdrop with slowly drifting lights and faint twinkling stars. The house logo draws itself in: the roof from eave to peak to eave, then the D. While you speak the roof lifts and glows and rings ripple out from the house. While the assistant thinks, a comet circles the house and a band of light sweeps across the D. What you said shows in quotes, then the answer rises in.
 - **Docked:** the same logo, small, in a navy card at the bottom of the screen with the words beside it.
 
-It follows the Appearance settings Background, Text size and Reactive activity bar. The palette always matches the logo. Touches pass through, so a double tap still dismisses the turn.
+It follows the Appearance settings Background (down to 90%, so the logo always stands out), Text size and Reactive activity bar. The palette always matches the logo. Touches pass through, so a double tap still dismisses the turn.
 
 | Setting            | Default | Meaning                                            |
 | ------------------ | ------- | -------------------------------------------------- |

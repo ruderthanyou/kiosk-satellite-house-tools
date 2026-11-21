@@ -45,7 +45,7 @@ final class VoiceSkin {
 
     static final String KEY = "voice_skin";
     private static final String[] EVENTS = { "voice.overlay", "voice.level", "voice.text", "voice.appearance" };
-    private static final float DEFAULT_BACKGROUND = 0.92f;
+    private static final float DEFAULT_BACKGROUND = 0.97f;
 
     // The logo's colors.
     static final int NAVY_TOP = 0xFF0C1730;
@@ -343,8 +343,9 @@ final class VoiceSkin {
                 theme.styleText(said, 14 * scale, 400, "onSurface");
                 theme.styleText(answered, 18 * scale, 500, "onSurface");
             } else {
+                // Background lowers the backdrop a little, never so far that the screen behind fights the logo.
                 float opacity = background != null ? background : DEFAULT_BACKGROUND;
-                backdrop.setAlpha(Math.max(0.2f, Math.min(1f, opacity)));
+                backdrop.setAlpha(Math.max(0.9f, Math.min(1f, opacity)));
                 theme.styleText(title, 15 * scale, 600, "onSurface");
                 theme.styleText(said, 21 * scale, 400, "onSurface");
                 theme.styleText(answered, 30 * scale, 500, "onSurface");
@@ -382,6 +383,23 @@ final class VoiceSkin {
             private final Paint orb = new Paint(Paint.ANTI_ALIAS_FLAG);
             private final RadialGradient[] glows = new RadialGradient[4];
             private final int[] colors = { 0x335AB8F5, 0x2A3E7BFA, 0x22FFB547, 0x2A7FD3FF };
+            private final int STARS = 46;
+            private final float[] starX = new float[STARS], starY = new float[STARS], starSize = new float[STARS];
+            private final double[] starSpeed = new double[STARS], starPhase = new double[STARS];
+            private final Paint star = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+            {
+                java.util.Random random = new java.util.Random(7); // the same sky every time
+                float dp = getResources().getDisplayMetrics().density;
+                for (int i = 0; i < STARS; i++) {
+                    starX[i] = random.nextFloat();
+                    starY[i] = random.nextFloat();
+                    starSize[i] = dp * (0.6f + 1.2f * random.nextFloat());
+                    starSpeed[i] = 0.4 + 1.4 * random.nextDouble();
+                    starPhase[i] = random.nextDouble() * Math.PI * 2;
+                }
+                star.setColor(0xFFDCEBFF);
+            }
 
             Backdrop(Context context) {
                 super(context);
@@ -404,6 +422,13 @@ final class VoiceSkin {
             protected void onDraw(Canvas canvas) {
                 int w = getWidth(), h = getHeight();
                 canvas.drawRect(0, 0, w, h, fill);
+                // Faint stars twinkling, each at its own pace.
+                double now = SystemClock.uptimeMillis() / 1000.0;
+                for (int i = 0; i < STARS; i++) {
+                    double tw = Math.sin(now * starSpeed[i] + starPhase[i]);
+                    star.setAlpha((int) Math.round(40 + 150 * tw * tw));
+                    canvas.drawCircle(starX[i] * w, starY[i] * h, starSize[i], star);
+                }
                 double t = SystemClock.uptimeMillis() / 1000.0;
                 float big = Math.max(w, h);
                 for (int i = 0; i < glows.length; i++) {
@@ -544,11 +569,17 @@ final class VoiceSkin {
             roofPart.reset();
             measure.getSegment(0, measure.getLength() * ease(age / 750f), roofPart, true);
             float stroke = unit * 0.13f;
-            roofGlow.setStrokeWidth(stroke * (1.9f + 1.2f * shown));
-            int glowAlpha = Math.round(70 + 120 * shown + 60 * thinkingFade);
-            roofGlow.setColor(Color.argb(Math.min(255, glowAlpha), 0x5A, 0xB8, 0xF5));
-            canvas.drawPath(roofPart, roofGlow);
+            // A soft glow: wider, fainter strokes stacked under the roof, brighter with the voice.
+            float glow = 0.6f + 1.1f * shown + 0.5f * thinkingFade;
+            float[] widths = { 3.2f, 2.4f, 1.75f, 1.35f };
+            int[] alphas = { 10, 18, 30, 48 };
+            for (int i = 0; i < widths.length; i++) {
+                roofGlow.setStrokeWidth(stroke * (widths[i] + 0.8f * shown));
+                roofGlow.setColor(Color.argb(Math.min(255, Math.round(alphas[i] * glow)), 0x5A, 0xB8, 0xF5));
+                canvas.drawPath(roofPart, roofGlow);
+            }
             roof.setStrokeWidth(stroke);
+            roof.setShadowLayer(stroke * (0.5f + 0.9f * shown), 0, 0, 0xCC5AB8F5);
             roof.setColor(thinkingFade > 0.02f ? blend(SKY, 0xFFBFE6FF, (float) breath * thinkingFade) : SKY);
             canvas.drawPath(roofPart, roof);
 
@@ -558,6 +589,23 @@ final class VoiceSkin {
                 letter.setTextSize(unit * 0.98f * (0.85f + 0.15f * d));
                 letter.setAlpha(Math.round(255 * d));
                 letter.setShadowLayer(unit * 0.08f * (0.4f + shown), 0, 0, 0xAA5AB8F5);
+                // Thinking: a band of light sweeps across the D.
+                if (thinkingFade > 0.02f) {
+                    float sweep = (now % 1600) / 1600f;
+                    float x = cx - unit + sweep * unit * 2.6f;
+                    int edge = blend(WHITE, 0xFF9FD8FF, thinkingFade);
+                    letter.setShader(
+                        new LinearGradient(
+                            x - unit * 0.35f,
+                            0,
+                            x + unit * 0.35f,
+                            0,
+                            new int[] { WHITE, edge, WHITE },
+                            new float[] { 0f, 0.5f, 1f },
+                            Shader.TileMode.CLAMP
+                        )
+                    );
+                } else letter.setShader(null);
                 Paint.FontMetrics fm = letter.getFontMetrics();
                 float baseline = cy + unit * 0.3f - (fm.ascent + fm.descent) / 2f;
                 canvas.drawText("D", cx, baseline, letter);
