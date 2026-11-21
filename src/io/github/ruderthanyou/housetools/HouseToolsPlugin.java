@@ -72,6 +72,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private volatile String alertsEntity = "";
     private volatile String photoIndexPath = "/local/screensaver/photo_index.json";
     private volatile boolean nightScreensaver;
+    private volatile String preferSensors = ""; // comma list of words to look for first in room sensor IDs
     private volatile String weatherEntity = "";
     private static final String MOON_NORTH = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/frames/730x730_1x1_30p/moon.{frame}.jpg";
     private static final String MOON_SOUTH = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005588/frames/730x730_1x1_30p/moon.{frame}.jpg";
@@ -192,7 +193,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     /** What the live template depends on; a change re-subscribes. */
     private String houseSubscriptionKey() {
-        return area + "|" + garageEntity + "|" + alarmEntity + "|" + alertsEntity + "|" + weatherEntity;
+        return area + "|" + garageEntity + "|" + alarmEntity + "|" + alertsEntity + "|" + weatherEntity + "|" + preferSensors;
     }
 
     /**
@@ -339,6 +340,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
         Object night = settings.get("nightScreensaver");
         if (night instanceof Boolean) nightScreensaver = (Boolean) night;
         weatherEntity = entity(settings.get("weatherEntity"));
+        preferSensors = text(settings.get("preferSensors"), "").toLowerCase(java.util.Locale.US).replaceAll("[^a-z0-9_,]", "");
         moonFrames = text(settings.get("moonFrames"), "");
         photoSeconds = (int) clamp(settings.get("photoSeconds"), 10, 600, photoSeconds);
         photoBlock = (int) clamp(settings.get("photoBlock"), 1, 50, photoBlock);
@@ -389,12 +391,21 @@ public final class HouseToolsPlugin implements KioskPlugin {
             + "{% for l in al %}{% set base = l | regex_replace('_\\d+_light$', '_light') %}"
             + "{% if base == l or base not in al %}{% set ns.l = ns.l + [{'id': l, 'name': state_attr(l,'friendly_name') or l, 'on': is_state(l,'on'), 'off_line': states(l) in ['unavailable','unknown']}] %}{% endif %}{% endfor %}"
             + "{% for p in states.person if p.attributes.entity_picture %}{% set ns.p = ns.p + [{'name': p.name, 'home': p.state == 'home', 'pic': p.attributes.entity_picture}] %}{% endfor %}"
-            + "{% set sens = (area_entities(area) if area else []) | select('match','sensor\\.') | list %}"
+            // Room temperature/humidity: sensors in the area with that device class, not batteries, chips or
+            // device internals; preferred words first, then one with a matching humidity sensor, then any.
+            + "{% set prefer = '" + preferSensors + "'.split(',') | reject('eq','') | list %}"
+            + "{% set skip = 'battery|internal|device_temperature|chip|cpu|pcb|mcu|nozzle|_bed_|chamber|_ams_|_esp_|processor|soc|board' %}"
+            + "{% set sens = (area_entities(area) if area else []) | select('match','sensor[.]') | reject('search', skip) | list %}"
+            + "{% set temps = sens | select('is_state_attr','device_class','temperature') | select('has_value') | list %}"
+            + "{% set hums = sens | select('is_state_attr','device_class','humidity') | select('has_value') | list %}"
             + "{% set ns2 = namespace(t='', h='') %}"
-            + "{% for kind in ['climate_sensor','thermostat','airthing'] %}"
-            + "{% for e in sens if ns2.t == '' and e.endswith('_' ~ kind ~ '_temperature') and has_value(e) %}{% set ns2.t = e %}{% endfor %}"
-            + "{% for e in sens if ns2.h == '' and e.endswith('_' ~ kind ~ '_humidity') and has_value(e) %}{% set ns2.h = e %}{% endfor %}"
+            + "{% for word in prefer %}"
+            + "{% for e in temps if ns2.t == '' and word in e %}{% set ns2.t = e %}{% endfor %}"
+            + "{% for e in hums if ns2.h == '' and word in e %}{% set ns2.h = e %}{% endfor %}"
             + "{% endfor %}"
+            + "{% for e in temps if ns2.t == '' and (e | regex_replace('temperature$', 'humidity')) in hums %}{% set ns2.t = e %}{% set ns2.h = e | regex_replace('temperature$', 'humidity') %}{% endfor %}"
+            + "{% if ns2.t == '' and temps %}{% set ns2.t = temps[0] %}{% endif %}"
+            + "{% if ns2.h == '' and hums %}{% set ns2.h = hums[0] %}{% endif %}"
             + "{% set cl = ((area_entities(area) if area else []) | select('match','climate\\.') | list + [''])[0] %}"
             + "{% set clim = {'temp': (states(ns2.t) | float(0) | round(0) | int) if ns2.t else none, 'unit': state_attr(ns2.t,'unit_of_measurement') if ns2.t else '',"
             + " 'hum': (states(ns2.h) | float(0) | round(0) | int) if ns2.h else none,"

@@ -14,7 +14,7 @@ A screensaver for a lit room, shown under the name you choose (Home Screensaver 
 
 Home Assistant's address comes from Kiosk Satellite, so there's nothing to set for it. Photos come from a list file in Home Assistant's `www` folder: `{"base": "/media/local/photos/", "photos": ["a.jpg", ...]}`. Each photo is downloaded through a signed Home Assistant link, so the photos themselves stay private.
 
-The room's temperature and humidity come from a sensor in the room's area whose ID ends in `_climate_sensor_temperature`/`_humidity`, then `_thermostat_...`, then `_airthing_...`.
+The room's temperature and humidity come from a temperature (and humidity) sensor in the room's area, skipping batteries, chips and device internals, and preferring one with a matching humidity sensor. **Preferred room sensors** lets you name the ones to use first.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
@@ -23,6 +23,7 @@ The room's temperature and humidity come from a sensor in the room's area whose 
 | Room (area ID) | empty | Home Assistant area whose lights and climate show, such as `living_room` |
 | Garage door | empty | A cover entity for the garage chip |
 | Alarm | empty | An alarm panel entity for the alarm chip |
+| Preferred room sensors (optional) | empty | Words to look for first in room sensor IDs |
 | Photo list | `/local/screensaver/photo_index.json` | Where the photo list file is |
 | Each photo for | 30 s | How long each photo shows |
 | Photos in a row | 1 | 1 = every photo at random. More = that many from one random spot |

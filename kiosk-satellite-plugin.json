@@ -94,6 +94,14 @@
       "description": "An alarm panel entity. Empty hides the alarm chip."
     },
     {
+      "key": "preferSensors",
+      "type": "string",
+      "title": "Preferred room sensors (optional)",
+      "default": "",
+      "group": "Screensaver",
+      "description": "Words to look for first in the room's temperature and humidity sensor IDs, comma separated, in order. Empty picks a room sensor by itself."
+    },
+    {
       "key": "alertsEntity",
       "type": "entity",
       "title": "Alerts",
