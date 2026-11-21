@@ -136,6 +136,13 @@ public final class HouseToolsPlugin implements KioskPlugin {
         main.post(this::attach);
         publishScreensaver();
         try { host.subscribe("device.light"); } catch (Throwable error) { log("Light sensor: " + error); }
+        // The event only fires on a change, so read the current level once: a room that stays dark
+        // would otherwise never tell us.
+        try {
+            host.executeCommand("getLightLevel", Collections.emptyMap(), (ok, data, error) -> {
+                if (ok && data instanceof Map) lightReading(((Map<?, ?>) data).get("lux"));
+            });
+        } catch (Throwable error) { log("Light level: " + error); }
         try { host.subscribe("browser.state"); } catch (Throwable error) { log("Browser state: " + error); }
         readHaUrl();
         subscribeHouse();
@@ -261,14 +268,7 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     @Override public void onEvent(String event, Map<String, Object> payload) {
         if ("ks.device.light".equals(event)) {
-            Object lux = payload.get("lux");
-            if (lux instanceof Number) {
-                double v = ((Number) lux).doubleValue();
-                // a little hysteresis so a reading on the line doesn't flip back and forth
-                boolean nowDark = dark ? v < nightLux + 3 : v < nightLux;
-                if (nowDark != dark) { dark = nowDark; screensaver.darkChanged(nowDark); }
-                applyMode();
-            }
+            lightReading(payload.get("lux"));
             return;
         }
         if ("ks.browser.state".equals(event)) { readHaUrl(); return; }
@@ -355,6 +355,15 @@ public final class HouseToolsPlugin implements KioskPlugin {
             double value = ((Number) minutes).doubleValue();
             inUseMs = (long) (Math.max(1, Math.min(60, value)) * 60_000);
         }
+    }
+
+    private void lightReading(Object lux) {
+        if (!(lux instanceof Number)) return;
+        double v = ((Number) lux).doubleValue();
+        // a little hysteresis so a reading on the line doesn't flip back and forth
+        boolean nowDark = dark ? v < nightLux + 3 : v < nightLux;
+        if (nowDark != dark) { dark = nowDark; screensaver.darkChanged(nowDark); }
+        applyMode();
     }
 
     private static String text(Object value, String fallback) {
