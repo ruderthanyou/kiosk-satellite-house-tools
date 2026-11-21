@@ -374,7 +374,7 @@ final class Screensaver implements OverlayFactory {
 
     private final class Root extends FrameLayout {
         private final KsTheme theme;
-        private ImageView back, front;
+        private PhotoView back, front;
         private final View scrim;
         private final FlowRow topRow, lightsRow; // faces + status chips; this room's lights
         private final LinearLayout content;       // the photo screen's chips column
@@ -414,35 +414,41 @@ final class Screensaver implements OverlayFactory {
             addView(column, columnParams);
             content = column;
 
+            // Corners like Kiosk Satellite's widgets: plain text with a soft shadow.
             dayClockBox = new LinearLayout(context);
             dayClockBox.setOrientation(LinearLayout.VERTICAL);
-            dayClock = shadowed(context, 56, 400);
+            dayClock = shadowed(context, 62, 400);
             dayClock.setIncludeFontPadding(false);
-            dayDate = shadowed(context, 20, 400);
+            dayDate = shadowed(context, 30, 300);
+            dayDate.setTextColor(0xE6F5F7FA);
             dayClockBox.addView(dayClock);
             dayClockBox.addView(dayDate);
             LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             clockParams.gravity = Gravity.TOP | Gravity.LEFT;
             clockParams.leftMargin = dp(24);
-            clockParams.topMargin = dp(16);
+            clockParams.topMargin = dp(20);
             addView(dayClockBox, clockParams);
 
             dewBox = new LinearLayout(context);
             dewBox.setOrientation(LinearLayout.VERTICAL);
-            dewValue = shadowed(context, 40, 600);
-            dewLabel = shadowed(context, 15, 400);
+            dewValue = shadowed(context, 30, 400);
+            dewValue.setGravity(Gravity.CENTER_VERTICAL);
+            dewLabel = shadowed(context, 12, 400);
+            dewLabel.setTextColor(0xCCF5F7FA);
             dewBox.addView(dewValue);
             dewBox.addView(dewLabel);
             LayoutParams dewParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dewParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
-            dewParams.leftMargin = dp(24);
-            dewParams.bottomMargin = dp(16);
+            dewParams.leftMargin = dp(20);
+            dewParams.bottomMargin = dp(18);
             addView(dewBox, dewParams);
 
-            dayWeather = row(context);
+            dayWeather = new LinearLayout(context);
+            dayWeather.setOrientation(LinearLayout.VERTICAL);
+            dayWeather.setGravity(Gravity.RIGHT);
             LayoutParams dwParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dwParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-            dwParams.rightMargin = dp(16);
+            dwParams.rightMargin = dp(22);
             dwParams.bottomMargin = dp(16);
             addView(dayWeather, dwParams);
 
@@ -517,9 +523,8 @@ final class Screensaver implements OverlayFactory {
 
         int dp(float v) { return theme.px(v); }
 
-        private ImageView photoView(Context context) {
-            ImageView image = new ImageView(context);
-            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        private PhotoView photoView(Context context) {
+            PhotoView image = new PhotoView(context);
             image.setAlpha(0f);
             return image;
         }
@@ -548,7 +553,7 @@ final class Screensaver implements OverlayFactory {
             clock.setText(time);
             date.setText(day);
             dayClock.setText(time);
-            dayDate.setText(day);
+            dayDate.setText(new java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.US).format(now));
         }
 
         /** Weather Mood style buttons: condition and temperature on the left; high/low, humidity, wind on the right. */
@@ -563,25 +568,25 @@ final class Screensaver implements OverlayFactory {
             dayWeather.removeAllViews();
             dewBox.setVisibility(GONE);
             if (state.isEmpty() || "unavailable".equals(state)) return;
-            // Photo screen: Outside weather bottom right, dew point bottom left.
+            // Photo screen corners, like Kiosk Satellite's widgets.
             {
                 String u = Net.str(w.get("unit")).replace("°", "");
                 Object tt = w.get("temp");
-                String label = "Outside " + (tt instanceof Number ? Math.round(((Number) tt).doubleValue()) + "°" + u + "  " : "") + conditionName(state);
-                dayWeather.addView(chip(label, conditionIcon(state), CHIP, TEXT));
+                if (tt instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) tt).doubleValue()) + "°" + u, conditionIcon(state), 46, 44, conditionColor(state), 300));
+                dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 22, 18, 0xFFF5F7FA, 300));
                 Double h = plugin.forecastHigh(), l = plugin.forecastLow();
-                if (h != null && l != null) {
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                    lp.leftMargin = dp(10);
-                    dayWeather.addView(chip(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", CHIP, TEXT), lp);
-                }
+                if (h != null && l != null) dayWeather.addView(iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 22, 18, 0xFFF5F7FA, 300));
+                Object ws = w.get("wind");
+                if (ws instanceof Number) dayWeather.addView(iconLine(Math.round(((Number) ws).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", 22, 18, 0xFFF5F7FA, 300));
                 Object dew = w.get("dew"), hum = w.get("hum");
                 if (dew instanceof Number) {
                     double d = ((Number) dew).doubleValue();
                     boolean celsius = u.toUpperCase(java.util.Locale.US).contains("C");
-                    dewValue.setText(Math.round(d) + "°");
-                    dewValue.setTextColor(dewColor(celsius ? d * 9 / 5 + 32 : d));
-                    dewLabel.setText("Dew point" + (hum instanceof Number ? "  ·  " + Math.round(((Number) hum).doubleValue()) + "% humidity" : ""));
+                    int color = dewColor(celsius ? d * 9 / 5 + 32 : d);
+                    dewValue.setText(Math.round(d) + " °" + u);
+                    dewValue.setTextColor(color);
+                    setLeftIcon(dewValue, "mdi:water-thermometer", 28, color);
+                    dewLabel.setText("Dew point" + (hum instanceof Number ? " · " + Math.round(((Number) hum).doubleValue()) + "% humidity" : ""));
                     dewBox.setVisibility(nightShown() ? GONE : VISIBLE);
                 }
             }
@@ -595,6 +600,35 @@ final class Screensaver implements OverlayFactory {
             if (hum instanceof Number) addRight(chip(Math.round(((Number) hum).doubleValue()) + "%", "mdi:water-outline", CHIP, TEXT));
             Object wind = w.get("wind");
             if (wind instanceof Number) addRight(chip(Math.round(((Number) wind).doubleValue()) + " " + Net.str(w.get("wind_unit")), "mdi:weather-windy", CHIP, TEXT));
+        }
+
+        /** "56°F" with an icon after it, right-aligned: one line of the weather corner. */
+        private TextView iconLine(String text, String icon, float sp, int iconDp, int iconColor, int weight) {
+            TextView line = shadowed(getContext(), sp, weight);
+            line.setText(text);
+            line.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+            try {
+                Drawable d = theme.icon(icon, "onSurface");
+                if (d != null) {
+                    d.setBounds(0, 0, dp(iconDp), dp(iconDp));
+                    d.setTint(iconColor);
+                    line.setCompoundDrawables(null, null, d, null);
+                    line.setCompoundDrawablePadding(dp(sp > 30 ? 12 : 8));
+                }
+            } catch (Throwable ignored) {}
+            return line;
+        }
+
+        private void setLeftIcon(TextView view, String icon, int iconDp, int color) {
+            try {
+                Drawable d = theme.icon(icon, "onSurface");
+                if (d != null) {
+                    d.setBounds(0, 0, dp(iconDp), dp(iconDp));
+                    d.setTint(color);
+                    view.setCompoundDrawables(d, null, null, null);
+                    view.setCompoundDrawablePadding(dp(8));
+                }
+            } catch (Throwable ignored) {}
         }
 
         private void addRight(View chip) {
@@ -624,13 +658,13 @@ final class Screensaver implements OverlayFactory {
         /** Crossfade: the hidden view gets the new photo and fades in while the shown one fades out. */
         void showPhoto(Bitmap bitmap) {
             if (dark) return;
-            ImageView incoming = back, outgoing = front;
-            incoming.setImageBitmap(bitmap);
+            PhotoView incoming = back, outgoing = front;
+            incoming.setPhoto(bitmap);
             incoming.animate().cancel();
             incoming.setAlpha(0f);
             incoming.animate().alpha(1f).setDuration(1200).start();
             outgoing.animate().cancel();
-            outgoing.animate().alpha(0f).setDuration(1200).withEndAction(() -> outgoing.setImageDrawable(null)).start();
+            outgoing.animate().alpha(0f).setDuration(1200).withEndAction(() -> outgoing.setPhoto(null)).start();
             back = outgoing;
             front = incoming;
         }
@@ -770,6 +804,45 @@ final class Screensaver implements OverlayFactory {
         }
     }
 
+    /**
+     * The whole photo, fitted to the screen, over a blurred and darkened copy of itself that fills the rest,
+     * the way Kiosk Satellite's photo screensaver shows it. The blur is a tiny copy scaled up with filtering.
+     */
+    private static final class PhotoView extends View {
+        private Bitmap photo, blur;
+        private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        private final Paint shade = new Paint();
+        private final Matrix matrix = new Matrix();
+
+        PhotoView(Context context) { super(context); shade.setColor(0x8C000000); }
+
+        void setPhoto(Bitmap b) {
+            photo = b;
+            blur = null;
+            if (b != null) {
+                int w = 24, h = Math.max(1, Math.round(24f * b.getHeight() / b.getWidth()));
+                Bitmap tiny = Bitmap.createScaledBitmap(b, w, h, true);
+                blur = Bitmap.createScaledBitmap(tiny, w * 4, h * 4, true); // a little smoother when stretched
+                if (tiny != blur) tiny.recycle();
+            }
+            invalidate();
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            int w = getWidth(), h = getHeight();
+            if (photo == null || w == 0 || h == 0) return;
+            float cover = Math.max((float) w / blur.getWidth(), (float) h / blur.getHeight());
+            matrix.setScale(cover, cover);
+            matrix.postTranslate((w - blur.getWidth() * cover) / 2f, (h - blur.getHeight() * cover) / 2f);
+            canvas.drawBitmap(blur, matrix, paint);
+            canvas.drawRect(0, 0, w, h, shade);
+            float fit = Math.min((float) w / photo.getWidth(), (float) h / photo.getHeight());
+            matrix.setScale(fit, fit);
+            matrix.postTranslate((w - photo.getWidth() * fit) / 2f, (h - photo.getHeight() * fit) / 2f);
+            canvas.drawBitmap(photo, matrix, paint);
+        }
+    }
+
     /** Lays children out left to right and wraps to a new line when full; every line is centered. */
     private static final class FlowRow extends android.view.ViewGroup {
         private final int gapX, gapY;
@@ -856,9 +929,23 @@ final class Screensaver implements OverlayFactory {
         return 0xFFC62828;
     }
 
+    /** Weather icon colors like Kiosk Satellite's colored icons. */
+    static int conditionColor(String state) {
+        switch (state) {
+            case "clear-night": return 0xFF8AB4F8;
+            case "sunny": return 0xFFFFC94D;
+            case "partlycloudy": return 0xFFFFD580;
+            case "rainy": case "pouring": return 0xFF64B5F6;
+            case "lightning": case "lightning-rainy": return 0xFFFFD54F;
+            case "snowy": case "snowy-rainy": return 0xFFE3F2FD;
+            default: return 0xFFCFD8DC;
+        }
+    }
+
     static String conditionName(String state) {
         switch (state) {
-            case "clear-night": case "sunny": return "Clear";
+            case "clear-night": return "Clear night";
+            case "sunny": return "Sunny";
             case "partlycloudy": return "Partly cloudy";
             case "cloudy": return "Cloudy";
             case "fog": return "Fog";
