@@ -460,17 +460,60 @@ public final class HouseToolsPlugin implements KioskPlugin {
         }
     }
 
-    private void lightReading(Object lux) {
+    // ----- Room light: a steady light level, for the screensaver and for Kiosk Satellite's brightness -----
+
+    private double lightAverage = Double.NaN; // smoothed reading
+    private long lightAverageAt;
+    private Double lightPublished;             // last value sent as the Room light entity
+
+    /**
+     * Raw readings from the tablet's light sensor. The sensor sits next to the screen, so the screen's own glow
+     * moves the reading as brightness changes; fed straight back into automatic brightness that makes a loop
+     * that can flicker. So the reading is averaged over about 45 seconds, and the Room light entity only
+     * changes when the light really does (by more than 25% and more than 2 lux). Kiosk Satellite's automatic
+     * brightness is set to follow that entity, and the screensaver's dark/lit choice uses the same value.
+     */
+    private volatile Double lightRaw; // latest raw reading, fed in again every 5 s so the average keeps moving
+
+    private synchronized void lightReading(Object lux) {
         if (!(lux instanceof Number)) return;
-        double v = ((Number) lux).doubleValue();
-        // a little hysteresis so a reading on the line doesn't flip back and forth
-        boolean nowDark = dark ? v < nightLux + 3 : v < nightLux;
+        double v = Math.max(0, ((Number) lux).doubleValue());
+        lightRaw = v;
+        long now = System.currentTimeMillis();
+        if (Double.isNaN(lightAverage)) {
+            lightAverage = v;
+        } else {
+            double dt = Math.max(0, now - lightAverageAt) / 1000.0;
+            double alpha = 1 - Math.exp(-dt / 45.0);
+            lightAverage += (v - lightAverage) * alpha;
+        }
+        lightAverageAt = now;
+        double level = lightAverage;
+        if (lightPublished == null || Math.abs(level - lightPublished) > Math.max(2.0, 0.25 * lightPublished)) {
+            lightPublished = (double) Math.round(level);
+            try {
+                host.publishSensor("room_light", "Room light", lightMeta(), lightPublished);
+            } catch (Throwable ignored) {}
+        }
+        double steady = lightPublished;
+        // a little hysteresis so a level on the line doesn't flip back and forth
+        boolean nowDark = dark ? steady < nightLux + 3 : steady < nightLux;
         if (nowDark != dark) {
             dark = nowDark;
             screensaver.darkChanged(nowDark);
         }
         applyMode();
     }
+
+    private static Map<String, Object> lightMeta() {
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("unit", "lx");
+        meta.put("deviceClass", "illuminance");
+        meta.put("stateClass", "measurement");
+        meta.put("accuracyDecimals", 0);
+        return meta;
+    }
+
 
     private static String text(Object value, String fallback) {
         return value instanceof String && !((String) value).trim().isEmpty() ? ((String) value).trim() : fallback;
@@ -755,6 +798,9 @@ public final class HouseToolsPlugin implements KioskPlugin {
 
     private void check() {
         healthCheck();
+        // The sensor only reports changes; keep the average moving toward a reading that has stopped changing.
+        Double raw = lightRaw;
+        if (raw != null) lightReading(raw);
         Activity current = activity.get();
         if (current != null) spy(current);
         publishTouch(false);

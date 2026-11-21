@@ -34,6 +34,14 @@ NASA SVS ──hourly moon image──▶ SkyView (last good image saved in the 
 
 One `render_template` subscription carries everything the screens show. Home Assistant re-sends it whenever anything in it changes, so the plugin never polls entities. The template only reads entities named in the settings (and the room's area), so nothing about a particular house is built in.
 
+## Room light
+
+The tablet's light sensor sits next to the screen, so the screen's own glow moves the reading whenever brightness changes. Fed straight into automatic brightness, that makes a loop that can flicker between two levels. The plugin breaks it:
+
+- It averages the raw reading over about 45 seconds (fed in again every 5 seconds, since the sensor only reports changes).
+- It publishes a **Room light** entity that changes only when the light really does: by more than 25% and more than 2 lux.
+- Kiosk Satellite's automatic brightness can follow that entity (Screen > Adaptive brightness > use a Home Assistant entity), and the screensaver's dark/lit choice uses the same value.
+
 ## Which screensaver shows
 
 | Room                                  | Setting                                | What shows                                                  |
