@@ -363,8 +363,9 @@ final class Screensaver implements OverlayFactory {
                 if (moon == null) throw new java.io.IOException("not an image");
                 // Save at most every 6 hours: it's only a fallback, and this keeps writes to the tablet's flash rare.
                 if (cache != null && System.currentTimeMillis() - cache.lastModified() > 6 * 3600_000L) {
-                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(cache)) { out.write(bytes); }
-                    catch (Throwable ignored) {}
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(cache)) {
+                        out.write(bytes);
+                    } catch (Throwable ignored) {}
                 }
                 main.post(() -> {
                     moonLoading = "";

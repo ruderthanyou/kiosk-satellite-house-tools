@@ -1061,10 +1061,13 @@ public final class HouseToolsPlugin implements KioskPlugin {
             if (lastLogged.size() > 200) lastLogged.clear();
             lastLogged.put(message, now);
         }
-        try { host.log(message); } catch (Throwable ignored) {}
+        try {
+            host.log(message);
+        } catch (Throwable ignored) {}
         // Also visible in Home Assistant, since plugin logs can't be read remotely.
         String text = message.length() > 240 ? message.substring(0, 240) : message;
-        try { host.publishTextSensor("last_message", "Plugin message", text); } catch (Throwable ignored) {}
+        try {
+            host.publishTextSensor("last_message", "Plugin message", text);
+        } catch (Throwable ignored) {}
     }
-
 }
