@@ -53,7 +53,7 @@ There's a little hysteresis (3 lux) so a reading on the line doesn't flip back a
 ## Sky math
 
 - **Stars**: right ascension and declination from the catalog, converted to altitude and azimuth with local sidereal time from the current time and the home's longitude.
-- **Moon photo**: NASA's image for the current hour, downloaded while the night screen shows. The last good one is kept in memory for every new screensaver and saved in the app's cache for restarts; a failed download keeps it and retries after 10 minutes.
+- **Moon photo**: NASA's image for the current hour, downloaded while the night screen shows. The last good one is kept in memory for every new screensaver and saved in the app's cache for restarts (at most every 6 hours); a failed download keeps it and retries after 10 minutes.
 - **Moon**: a low-precision lunar position (mean longitude, anomaly and argument of latitude, with the main correction terms), good to about a degree, then the same conversion.
 - **Sun**: Home Assistant's `sun.sun` azimuth and elevation.
 - **Screen**: looking toward the equator, azimuth 90 degrees either side of it across the width, altitude 0 to 75 degrees from the bottom up. Below the equator the view turns to face north and NASA's south-up moon images are used.
@@ -63,3 +63,13 @@ There's a little hysteresis (3 lux) so a reading on the line doesn't flip back a
 - A push to `main` runs **Build**: it compiles against the SDK and uploads a test ZIP as an Actions artifact. A local test install uses Kiosk Satellite's developer "Install from ZIP".
 - A push to `main` also runs **Format**: Prettier formats the Java, JSON and Markdown and commits any changes.
 - Publishing a GitHub release tagged `vX.Y.Z` runs **Release**: it builds that version and attaches the three files Kiosk Satellite installs from. Kiosk Satellite only accepts release files uploaded by GitHub Actions.
+
+## Tablet storage
+
+The plugin keeps almost nothing on the tablet's flash storage, so it doesn't wear it out:
+
+- Photos, face pictures, the photo list, the star catalog, house data and the forecast live in memory only.
+- Home Assistant entities are sent over the network; Kiosk Satellite doesn't save plugin readings.
+- The only file is the moon fallback image (about 100 KB), rewritten at most every 6 hours.
+- The same log message is written at most once every 10 minutes, so a repeating error can't fill Kiosk Satellite's log.
+- Settings are saved only when someone changes one (for example the Auto-close switch).

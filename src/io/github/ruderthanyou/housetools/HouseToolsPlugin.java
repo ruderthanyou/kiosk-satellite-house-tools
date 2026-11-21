@@ -1046,15 +1046,25 @@ public final class HouseToolsPlugin implements KioskPlugin {
         } catch (Throwable ignored) {}
     }
 
+    private final java.util.Map<String, Long> lastLogged = new java.util.HashMap<>();
+
+    /**
+     * Log a message and show it as the Plugin message entity. The same message is logged at most once every
+     * 10 minutes, so a repeating error (photos failing while the NAS is down) can't fill Kiosk Satellite's log.
+     */
     void log(String message) {
         if (!alive) return;
-        try {
-            host.log(message);
-        } catch (Throwable ignored) {}
+        long now = System.currentTimeMillis();
+        synchronized (lastLogged) {
+            Long last = lastLogged.get(message);
+            if (last != null && now - last < 10 * 60_000L) return;
+            if (lastLogged.size() > 200) lastLogged.clear();
+            lastLogged.put(message, now);
+        }
+        try { host.log(message); } catch (Throwable ignored) {}
         // Also visible in Home Assistant, since plugin logs can't be read remotely.
         String text = message.length() > 240 ? message.substring(0, 240) : message;
-        try {
-            host.publishTextSensor("last_message", "Plugin message", text);
-        } catch (Throwable ignored) {}
+        try { host.publishTextSensor("last_message", "Plugin message", text); } catch (Throwable ignored) {}
     }
+
 }

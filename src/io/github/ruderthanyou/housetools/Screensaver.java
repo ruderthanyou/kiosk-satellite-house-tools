@@ -361,10 +361,10 @@ final class Screensaver implements OverlayFactory {
                 byte[] bytes = Net.get(url, 2_000_000);
                 Bitmap moon = Net.decode(bytes, 300, 300, false);
                 if (moon == null) throw new java.io.IOException("not an image");
-                if (cache != null) {
-                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(cache)) {
-                        out.write(bytes);
-                    } catch (Throwable ignored) {}
+                // Save at most every 6 hours: it's only a fallback, and this keeps writes to the tablet's flash rare.
+                if (cache != null && System.currentTimeMillis() - cache.lastModified() > 6 * 3600_000L) {
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(cache)) { out.write(bytes); }
+                    catch (Throwable ignored) {}
                 }
                 main.post(() -> {
                     moonLoading = "";
