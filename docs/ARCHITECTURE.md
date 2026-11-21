@@ -45,6 +45,7 @@ The tablet's light sensor sits next to the screen, so the screen's own glow rais
 - **Glow correction**: when the screen's brightness changes (Kiosk Satellite's `screen.brightness` event), the jump in the reading 4 seconds later is the screen's own light. The plugin learns that amount per unit of brightness (a slow average, ignoring samples where the room clearly changed too) and subtracts it.
 - **Averaging** over about 45 seconds (the last reading is fed in again every 5 seconds, since the sensor only reports changes).
 - **Hold**: the **Room light** entity changes at most once a minute, and only for a real change (at least 50% and 2 lux).
+- **Lamp on or off**: a jump of at least 3 times and 8 lux that is still there 3 seconds later replaces the average and is published at once (at most once a minute), so the screensaver leaves the night sky as soon as the lights come on.
 
 Kiosk Satellite's automatic brightness can follow that entity (Screen > Adaptive brightness > use a Home Assistant entity), and the screensaver's dark/lit choice uses the same value.
 

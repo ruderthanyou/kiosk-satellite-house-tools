@@ -491,6 +491,8 @@ public final class HouseToolsPlugin implements KioskPlugin {
     private long lightAverageAt;
     private Double lightPublished; // last value sent as the Room light entity
     private long lightPublishedAt;
+    private long jumpSince; // when the reading first jumped far from the average (0 = it hasn't)
+    private long lastSnapAt; // when a jump was last taken at once
     private volatile Double lightRaw; // latest raw reading, fed in again every 5 s so the average keeps moving
     private volatile double panel = Double.NaN; // current screen brightness, 0..1
     private volatile double glow = 0; // learned: lux the sensor gains per unit of screen brightness
@@ -506,6 +508,9 @@ public final class HouseToolsPlugin implements KioskPlugin {
      *   <li>The Room light entity changes at most once a minute, and only for a real change (at least 50% and
      *       2 lux), except at the very first reading.</li>
      * </ol>
+     * A lamp switched on or off is the exception: a jump of at least 3 times and 8 lux that is still there 3
+     * seconds later replaces the average and is published at once (at most once a minute), so the screensaver
+     * goes from the night sky to photos as soon as the light comes on.
      * Kiosk Satellite's automatic brightness follows that entity, and the screensaver's dark/lit choice uses it.
      */
     private synchronized void lightReading(Object lux) {
@@ -515,15 +520,28 @@ public final class HouseToolsPlugin implements KioskPlugin {
         double p = Double.isNaN(panel) ? 0 : panel;
         double v = Math.max(0, raw - glow * p);
         long now = System.currentTimeMillis();
-        if (Double.isNaN(lightAverage)) {
+        // a lamp switched on or off: a big jump that lasts more than a few seconds is taken at once, so the
+        // screensaver and brightness follow without waiting for the average (at most once a minute)
+        boolean jump =
+            !Double.isNaN(lightAverage) &&
+            Math.abs(v - lightAverage) >= 8 &&
+            (v >= lightAverage * 3 || v <= lightAverage / 3);
+        if (!jump) jumpSince = 0;
+        else if (jumpSince == 0) jumpSince = now;
+        boolean snap = jump && now - jumpSince >= 3_000L && now - lastSnapAt >= 60_000L;
+        if (Double.isNaN(lightAverage) || snap) {
             lightAverage = v;
+            if (snap) {
+                lastSnapAt = now;
+                jumpSince = 0;
+            }
         } else {
             double dt = Math.max(0, now - lightAverageAt) / 1000.0;
             lightAverage += (v - lightAverage) * (1 - Math.exp(-dt / 45.0));
         }
         lightAverageAt = now;
         double level = lightAverage;
-        boolean first = lightPublished == null;
+        boolean first = lightPublished == null || snap;
         boolean real =
             !first &&
             Math.abs(level - lightPublished) >= 2.0 &&
