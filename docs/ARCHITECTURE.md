@@ -72,7 +72,7 @@ There's a little hysteresis (3 lux) so a reading on the line doesn't flip back a
 - **Moon photo**: NASA's image for the current hour, downloaded while the night screen shows. The last good one is kept in memory for every new screensaver and saved in the app's cache for restarts (at most every 6 hours); a failed download keeps it and retries after 10 minutes.
 - **Moon**: a low-precision lunar position (mean longitude, anomaly and argument of latitude, with the main correction terms), good to about a degree, then the same conversion.
 - **Sun**: Home Assistant's `sun.sun` azimuth and elevation.
-- **Clouds**: each cloud is drawn once into a bitmap (a cluster of soft puffs) and slid across the screen in three depth layers. The bitmap has a margin above, below and to the sides, because the tallest puffs and their highlights reach past the cloud's box; without it the top of a big cloud was cut flat. A cloud thins to a quarter of its strength while it passes behind the clock and date in the middle, so the time stays readable.
+- **Clouds**: each cloud is drawn once into a bitmap (a cluster of soft puffs) and slid across the screen in three depth layers. The bitmap has a margin above, below and to the sides, because the tallest puffs and their highlights reach past the cloud's box; without it the top of a big cloud was cut flat.
 - **Screen**: looking toward the equator, azimuth 90 degrees either side of it across the width, altitude 0 to 75 degrees from the bottom up. Below the equator the view turns to face north and NASA's south-up moon images are used.
 
 ## Build and release
