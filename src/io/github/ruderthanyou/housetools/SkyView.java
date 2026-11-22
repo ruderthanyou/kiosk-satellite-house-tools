@@ -402,7 +402,7 @@ final class SkyView extends View {
         if (running) postInvalidateDelayed(80);
     }
 
-    /** Draw each cloud once: a cluster of soft puffs, light on top and shaded underneath. */
+    /** Draw each cloud once: a cluster of soft puffs, light on top and shaded underneath, with a margin so no puff is clipped. */
     private void buildClouds(int w) {
         cloudsBuiltFor = w;
         Random r = new Random(11);
@@ -411,8 +411,12 @@ final class SkyView extends View {
             float scale = 0.55f + cloudLayer[i] * 0.3f; // near clouds bigger
             int cw = (int) (w * (0.30f + r.nextFloat() * 0.18f) * scale), ch = (int) (cw * 0.45f);
             if (cw < 8 || ch < 8) continue;
-            Bitmap art = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
+            // The tallest puffs (and their highlights) reach about 0.22 ch above the cloud box and a little past its
+            // sides and bottom, so the bitmap gets a margin; without it the cloud top was cut flat.
+            int padTop = (int) (ch * 0.35f), padSide = (int) (cw * 0.06f), padBottom = (int) (ch * 0.12f);
+            Bitmap art = Bitmap.createBitmap(cw + 2 * padSide, ch + padTop + padBottom, Bitmap.Config.ARGB_8888);
             Canvas c = new Canvas(art);
+            c.translate(padSide, padTop);
             int puffs = 10 + r.nextInt(6);
             for (int k = 0; k < puffs; k++) {
                 float px = cw * (0.15f + 0.7f * r.nextFloat());
