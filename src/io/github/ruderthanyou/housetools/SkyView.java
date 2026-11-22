@@ -347,7 +347,13 @@ final class SkyView extends View {
                 float span = w + art.getWidth();
                 float x = (float) ((((cloudX[i] * w + t * cloudSpeed[i] * w) % span) + span) % span) - art.getWidth();
                 float y = cloudY[i] * h;
-                paint.setAlpha(dim ? 150 + cloudLayer[i] * 30 : 200 + cloudLayer[i] * 20);
+                // Thin a cloud out while it drifts behind the clock and date in the middle, so the time stays
+                // readable: 25% strength right behind them, full strength once clear.
+                float dx = Math.abs(x + art.getWidth() / 2f - w / 2f) / (w * 0.38f);
+                float dy = Math.abs(y + art.getHeight() * 0.6f - h * 0.5f) / (h * 0.32f);
+                float d = Math.min(1f, (float) Math.sqrt(dx * dx + dy * dy));
+                float fade = 0.25f + 0.75f * d * d;
+                paint.setAlpha((int) ((dim ? 150 + cloudLayer[i] * 30 : 200 + cloudLayer[i] * 20) * fade));
                 canvas.drawBitmap(art, x, y, paint);
             }
             paint.setAlpha(255);
