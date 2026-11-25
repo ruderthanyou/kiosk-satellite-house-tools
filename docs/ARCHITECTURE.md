@@ -60,6 +60,14 @@ Kiosk Satellite's automatic brightness can follow that entity (Screen > Adaptive
 
 There's a little hysteresis (3 lux) so a reading on the line doesn't flip back and forth. The choice is a plugin override in Kiosk Satellite: it isn't saved, so the plugin sets it again after every start and every five minutes.
 
+## Photo screen layout
+
+All sizes on the photo screen are "reference pixels": measured on a screen 800 pixels tall and scaled to the tablet's short side (`Root.ref`), so every tablet looks the same.
+
+- Every corner, and the bottom of the chips, sits `EDGE` (24) from the screen edge.
+- Corner text has no font padding, so the gaps are only the ones set in code: 8 between time and date, 4 between the dew point and its humidity line, 6 between weather lines.
+- The chips column is centered, and its side margins are worked out on every layout from the wider bottom corner (`Root.onMeasure`), so chips never run under the dew point or weather. On a narrow screen the chips keep at least half the width.
+
 ## Threads
 
 - Kiosk Satellite calls the plugin's callbacks one at a time on a worker thread; each must return within three seconds, so they only record state and post work.

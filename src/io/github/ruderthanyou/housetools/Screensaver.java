@@ -74,6 +74,8 @@ final class Screensaver implements OverlayFactory {
     private int TEXT = 0xFFF5F7FA; // soft gray (OLED care) or near-white, set when the view is made
     private int TEXT_SOFT_E6 = 0xE6F5F7FA, TEXT_SOFT_CC = 0xCCF5F7FA;
     private static final int TEXT_DIM = 0xB3F5F7FA;
+    /** Distance of every photo screen corner (and the chips) from the screen edge, in reference pixels. */
+    private static final float EDGE = 24;
 
     private final HouseToolsPlugin plugin;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -559,9 +561,8 @@ final class Screensaver implements OverlayFactory {
             column.setGravity(Gravity.CENTER_HORIZONTAL);
             LayoutParams columnParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
             columnParams.gravity = Gravity.BOTTOM;
-            columnParams.bottomMargin = dp(96); // clear of the bottom corner widgets (clock, dew point)
-            columnParams.leftMargin = dp(32);
-            columnParams.rightMargin = dp(32);
+            // Bottom lines up with the bottom corners; the sides are set in onMeasure to clear them.
+            columnParams.bottomMargin = (int) ref(EDGE);
             addView(column, columnParams);
             content = column;
 
@@ -573,25 +574,25 @@ final class Screensaver implements OverlayFactory {
             dayDate = cornerText(context, 37, 300);
             dayDate.setTextColor(TEXT_SOFT_E6);
             dayClockBox.addView(dayClock);
-            dayClockBox.addView(dayDate);
+            dayClockBox.addView(dayDate, gapBelow(8));
             LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             clockParams.gravity = Gravity.TOP | Gravity.LEFT;
-            clockParams.leftMargin = (int) ref(24);
-            clockParams.topMargin = (int) ref(20);
+            clockParams.leftMargin = (int) ref(EDGE);
+            clockParams.topMargin = (int) ref(EDGE);
             addView(dayClockBox, clockParams);
 
             dewBox = new LinearLayout(context);
             dewBox.setOrientation(LinearLayout.VERTICAL);
             dewValue = cornerText(context, 34, 400);
             dewValue.setGravity(Gravity.CENTER_VERTICAL);
-            dewLabel = cornerText(context, 12, 400);
+            dewLabel = cornerText(context, 17, 400);
             dewLabel.setTextColor(TEXT_SOFT_CC);
             dewBox.addView(dewValue);
-            dewBox.addView(dewLabel);
+            dewBox.addView(dewLabel, gapBelow(4));
             LayoutParams dewParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dewParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
-            dewParams.leftMargin = (int) ref(20);
-            dewParams.bottomMargin = (int) ref(26);
+            dewParams.leftMargin = (int) ref(EDGE);
+            dewParams.bottomMargin = (int) ref(EDGE);
             addView(dewBox, dewParams);
 
             dayWeather = new LinearLayout(context);
@@ -599,8 +600,8 @@ final class Screensaver implements OverlayFactory {
             dayWeather.setGravity(Gravity.RIGHT);
             LayoutParams dwParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dwParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-            dwParams.rightMargin = (int) ref(22);
-            dwParams.bottomMargin = (int) ref(22);
+            dwParams.rightMargin = (int) ref(EDGE);
+            dwParams.bottomMargin = (int) ref(EDGE);
             addView(dayWeather, dwParams);
 
             // Dark-room screen, like Weather Mood: animated sky, big clock and date, weather buttons along the bottom.
@@ -708,7 +709,43 @@ final class Screensaver implements OverlayFactory {
         private TextView cornerText(Context context, float refPx, int weight) {
             TextView t = shadowed(context, 12, weight);
             t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, ref(refPx));
+            // No built-in font padding, so the edge distance and the gaps between lines are only what we set.
+            t.setIncludeFontPadding(false);
             return t;
+        }
+
+        /** Layout params for a corner line with a fixed gap above it (reference pixels, see {@link #ref}). */
+        private LinearLayout.LayoutParams gapBelow(float refPx) {
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            p.topMargin = (int) ref(refPx);
+            return p;
+        }
+
+        /**
+         * Keeps the chips column clear of the bottom corners: its side margins are the wider bottom corner plus a
+         * gap, the same on both sides so the chips stay centered.
+         */
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
+            int unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+            int corner = 0;
+            for (View v : new View[] { dewBox, dayWeather }) {
+                if (v.getVisibility() == GONE) continue;
+                v.measure(unspecified, unspecified);
+                corner = Math.max(corner, v.getMeasuredWidth());
+            }
+            int side = (int) ref(EDGE) + corner + dp(16);
+            // Never squeeze the chips below half the screen; on a narrow screen they may then sit above a corner.
+            side = Math.min(side, MeasureSpec.getSize(widthSpec) / 4);
+            LayoutParams p = (LayoutParams) content.getLayoutParams();
+            if (p.leftMargin != side) {
+                p.leftMargin = side;
+                p.rightMargin = side;
+            }
+            super.onMeasure(widthSpec, heightSpec);
         }
 
         private PhotoView photoView(Context context) {
@@ -772,10 +809,11 @@ final class Screensaver implements OverlayFactory {
                         300
                     )
                 );
-                dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 27, 22, TEXT, 300));
+                dayWeather.addView(iconLine(conditionName(state), conditionIcon(state), 27, 22, TEXT, 300), lineGap());
                 Double h = plugin.forecastHigh(), l = plugin.forecastLow();
                 if (h != null && l != null) dayWeather.addView(
-                    iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 27, 22, TEXT, 300)
+                    iconLine(Math.round(h) + "° / " + Math.round(l) + "°", "mdi:thermometer", 27, 22, TEXT, 300),
+                    lineGap()
                 );
                 Object ws = w.get("wind");
                 if (ws instanceof Number) dayWeather.addView(
@@ -786,7 +824,8 @@ final class Screensaver implements OverlayFactory {
                         22,
                         TEXT,
                         300
-                    )
+                    ),
+                    lineGap()
                 );
                 Object dew = w.get("dew"), hum = w.get("hum");
                 if (dew instanceof Number) {
@@ -825,6 +864,11 @@ final class Screensaver implements OverlayFactory {
                     TEXT
                 )
             );
+        }
+
+        /** The gap above each smaller line of the weather corner. */
+        private LinearLayout.LayoutParams lineGap() {
+            return gapBelow(6);
         }
 
         /** "56°F" with an icon after it, right-aligned: one line of the weather corner. */
