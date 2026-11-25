@@ -534,7 +534,7 @@ final class Screensaver implements OverlayFactory {
         private final TextView clock, date;
         private final LinearLayout wxLeft, wxRight;
         // Photo screen corners: clock and date (top left), dew point (bottom left), Outside weather (bottom right).
-        private final TextView dayClock, dayDate, dewValue, dewLabel;
+        private final TextView dayClock, dayDate;
         private final LinearLayout dayClockBox, dewBox, dayWeather;
         private final java.util.List<View> people = new ArrayList<>(), status = new ArrayList<>();
         private final TextView hint;
@@ -574,7 +574,7 @@ final class Screensaver implements OverlayFactory {
             dayDate = cornerText(context, 37, 300);
             dayDate.setTextColor(TEXT_SOFT_E6);
             dayClockBox.addView(dayClock);
-            dayClockBox.addView(dayDate, gapBelow(8));
+            dayClockBox.addView(dayDate, gapBelow(2));
             LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             clockParams.gravity = Gravity.TOP | Gravity.LEFT;
             clockParams.leftMargin = (int) ref(EDGE);
@@ -583,12 +583,7 @@ final class Screensaver implements OverlayFactory {
 
             dewBox = new LinearLayout(context);
             dewBox.setOrientation(LinearLayout.VERTICAL);
-            dewValue = cornerText(context, 34, 400);
-            dewValue.setGravity(Gravity.CENTER_VERTICAL);
-            dewLabel = cornerText(context, 17, 400);
-            dewLabel.setTextColor(TEXT_SOFT_CC);
-            dewBox.addView(dewValue);
-            dewBox.addView(dewLabel, gapBelow(4));
+            // Filled in setWeather as a mirror of the weather corner: same sizes, icons on the left.
             LayoutParams dewParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dewParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
             dewParams.leftMargin = (int) ref(EDGE);
@@ -833,12 +828,22 @@ final class Screensaver implements OverlayFactory {
                     boolean celsius = u.toUpperCase(java.util.Locale.US).contains("C");
                     int color = dewColor(celsius ? (d * 9) / 5 + 32 : d);
                     if (plugin.softText()) color = dim(color, 0.7f);
-                    dewValue.setText(Math.round(d) + " °" + u);
-                    dewValue.setTextColor(color);
-                    setLeftIcon(dewValue, "mdi:water-thermometer", 30, color);
-                    dewLabel.setText(
-                        "Dew point" +
-                        (hum instanceof Number ? " · " + Math.round(((Number) hum).doubleValue()) + "% humidity" : "")
+                    dewBox.removeAllViews();
+                    TextView value = iconLine(Math.round(d) + "°" + u, "mdi:water-thermometer", 56, 52, color, 300, true);
+                    value.setTextColor(color);
+                    dewBox.addView(value);
+                    dewBox.addView(iconLine("Dew point", "mdi:water-opacity", 27, 22, TEXT, 300, true), lineGap());
+                    if (hum instanceof Number) dewBox.addView(
+                        iconLine(
+                            Math.round(((Number) hum).doubleValue()) + "% humidity",
+                            "mdi:water-percent",
+                            27,
+                            22,
+                            TEXT,
+                            300,
+                            true
+                        ),
+                        lineGap()
                     );
                     dewBox.setVisibility(nightShown() ? GONE : VISIBLE);
                 }
@@ -873,34 +878,39 @@ final class Screensaver implements OverlayFactory {
 
         /** "56°F" with an icon after it, right-aligned: one line of the weather corner. */
         private TextView iconLine(String text, String icon, float refPx, int iconRef, int iconColor, int weight) {
+            return iconLine(text, icon, refPx, iconRef, iconColor, weight, false);
+        }
+
+        /**
+         * One corner line with an icon. {@code left} = icon before the text, left-aligned (the dew point corner,
+         * a mirror of the weather corner); otherwise icon after the text, right-aligned.
+         */
+        private TextView iconLine(
+            String text,
+            String icon,
+            float refPx,
+            int iconRef,
+            int iconColor,
+            int weight,
+            boolean left
+        ) {
             TextView line = cornerText(getContext(), refPx, weight);
             line.setText(text);
-            line.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+            line.setGravity((left ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL);
             try {
                 Drawable d = theme.icon(icon, "onSurface");
                 if (d != null) {
                     int size = (int) ref(iconRef);
                     d.setBounds(0, 0, size, size);
                     d.setTint(iconColor);
-                    line.setCompoundDrawables(null, null, d, null);
+                    if (left) line.setCompoundDrawables(d, null, null, null);
+                    else line.setCompoundDrawables(null, null, d, null);
                     line.setCompoundDrawablePadding((int) ref(refPx > 40 ? 12 : 8));
                 }
             } catch (Throwable ignored) {}
             return line;
         }
 
-        private void setLeftIcon(TextView view, String icon, int iconRef, int color) {
-            try {
-                Drawable d = theme.icon(icon, "onSurface");
-                if (d != null) {
-                    int size = (int) ref(iconRef);
-                    d.setBounds(0, 0, size, size);
-                    d.setTint(color);
-                    view.setCompoundDrawables(d, null, null, null);
-                    view.setCompoundDrawablePadding(dp(8));
-                }
-            } catch (Throwable ignored) {}
-        }
 
         private void addRight(View chip) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
