@@ -829,7 +829,15 @@ final class Screensaver implements OverlayFactory {
                     int color = dewColor(celsius ? (d * 9) / 5 + 32 : d);
                     if (plugin.softText()) color = dim(color, 0.7f);
                     dewBox.removeAllViews();
-                    TextView value = iconLine(Math.round(d) + "°" + u, "mdi:water-thermometer", 56, 52, color, 300, true);
+                    TextView value = iconLine(
+                        Math.round(d) + "°" + u,
+                        "mdi:water-thermometer",
+                        56,
+                        52,
+                        color,
+                        300,
+                        true
+                    );
                     value.setTextColor(color);
                     dewBox.addView(value);
                     dewBox.addView(iconLine("Dew point", "mdi:water-opacity", 27, 22, TEXT, 300, true), lineGap());
@@ -910,7 +918,6 @@ final class Screensaver implements OverlayFactory {
             } catch (Throwable ignored) {}
             return line;
         }
-
 
         private void addRight(View chip) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
