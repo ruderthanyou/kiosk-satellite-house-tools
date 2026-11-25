@@ -829,8 +829,8 @@ final class Screensaver implements OverlayFactory {
                     int color = dewColor(celsius ? (d * 9) / 5 + 32 : d);
                     if (plugin.softText()) color = dim(color, 0.7f);
                     dewBox.removeAllViews();
-                    // Line 1: icon, the dew point in its comfort color, then the words "Dew point" smaller.
-                    String number = Math.round(d) + " °" + u;
+                    // Line 1: like the Outside temperature (same size and icon size), in its comfort color, then "Dew point" at the line size.
+                    String number = Math.round(d) + "°" + u;
                     android.text.SpannableString text = new android.text.SpannableString(number + "  Dew point");
                     text.setSpan(
                         new android.text.style.ForegroundColorSpan(color),
@@ -839,18 +839,18 @@ final class Screensaver implements OverlayFactory {
                         android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                     );
                     text.setSpan(
-                        new android.text.style.AbsoluteSizeSpan((int) ref(17)),
+                        new android.text.style.AbsoluteSizeSpan((int) ref(27)),
                         number.length(),
                         text.length(),
                         android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                     );
                     text.setSpan(
-                        new android.text.style.ForegroundColorSpan(TEXT_SOFT_CC),
+                        new android.text.style.ForegroundColorSpan(TEXT),
                         number.length(),
                         text.length(),
                         android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                     );
-                    TextView value = iconLine("", "mdi:water-thermometer", 34, 30, color, 400, true);
+                    TextView value = iconLine("", "mdi:water-thermometer", 56, 52, color, 300, true);
                     value.setText(text);
                     dewBox.addView(value);
                     // Line 2: the humidity with a small icon, the same size as the weather corner's lines.
