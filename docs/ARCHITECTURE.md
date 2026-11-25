@@ -66,7 +66,7 @@ All sizes on the photo screen are "reference pixels": measured on a screen 800 p
 
 - Every corner, and the bottom of the chips, sits `EDGE` (24) from the screen edge.
 - Corner text has no font padding, so the gaps are only the ones set in code: 2 between time and date, 6 between weather lines.
-- The dew point corner (bottom left): icon, the dew point (34, comfort color) and the words "Dew point" (17) on one line; the humidity (17) under it, starting under the number. Gap 4.
+- The dew point corner (bottom left): icon, the dew point (34, comfort color) and the words "Dew point" (17) on one line; the humidity under it with a small icon, the same size as the weather corner's lines (27, icon 22), so the two bottom corners match.
 - The chips column is centered, and its side margins are worked out on every layout from the wider bottom corner (`Root.onMeasure`), so chips never run under the dew point or weather. On a narrow screen the chips keep at least half the width.
 
 ## Threads

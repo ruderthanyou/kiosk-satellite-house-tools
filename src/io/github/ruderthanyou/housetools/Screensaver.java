@@ -853,14 +853,19 @@ final class Screensaver implements OverlayFactory {
                     TextView value = iconLine("", "mdi:water-thermometer", 34, 30, color, 400, true);
                     value.setText(text);
                     dewBox.addView(value);
-                    // Line 2: the humidity, starting under the number (past the icon).
-                    if (hum instanceof Number) {
-                        TextView humidity = cornerText(getContext(), 17, 400);
-                        humidity.setTextColor(TEXT_SOFT_CC);
-                        humidity.setText(Math.round(((Number) hum).doubleValue()) + "% humidity");
-                        humidity.setPadding((int) ref(30) + (int) ref(8), 0, 0, 0);
-                        dewBox.addView(humidity, gapBelow(4));
-                    }
+                    // Line 2: the humidity with a small icon, the same size as the weather corner's lines.
+                    if (hum instanceof Number) dewBox.addView(
+                        iconLine(
+                            Math.round(((Number) hum).doubleValue()) + "% humidity",
+                            "mdi:water-percent",
+                            27,
+                            22,
+                            TEXT,
+                            300,
+                            true
+                        ),
+                        lineGap()
+                    );
                     dewBox.setVisibility(nightShown() ? GONE : VISIBLE);
                 }
             }
