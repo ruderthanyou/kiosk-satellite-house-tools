@@ -583,7 +583,7 @@ final class Screensaver implements OverlayFactory {
 
             dewBox = new LinearLayout(context);
             dewBox.setOrientation(LinearLayout.VERTICAL);
-            // Filled in setWeather as a mirror of the weather corner: same sizes, icons on the left.
+            // Filled in setWeather: dew point and the words "Dew point" on one line, humidity under it.
             LayoutParams dewParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             dewParams.gravity = Gravity.BOTTOM | Gravity.LEFT;
             dewParams.leftMargin = (int) ref(EDGE);
@@ -829,30 +829,38 @@ final class Screensaver implements OverlayFactory {
                     int color = dewColor(celsius ? (d * 9) / 5 + 32 : d);
                     if (plugin.softText()) color = dim(color, 0.7f);
                     dewBox.removeAllViews();
-                    TextView value = iconLine(
-                        Math.round(d) + "°" + u,
-                        "mdi:water-thermometer",
-                        56,
-                        52,
-                        color,
-                        300,
-                        true
+                    // Line 1: icon, the dew point in its comfort color, then the words "Dew point" smaller.
+                    String number = Math.round(d) + " °" + u;
+                    android.text.SpannableString text = new android.text.SpannableString(number + "  Dew point");
+                    text.setSpan(
+                        new android.text.style.ForegroundColorSpan(color),
+                        0,
+                        number.length(),
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                     );
-                    value.setTextColor(color);
+                    text.setSpan(
+                        new android.text.style.AbsoluteSizeSpan((int) ref(17)),
+                        number.length(),
+                        text.length(),
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    );
+                    text.setSpan(
+                        new android.text.style.ForegroundColorSpan(TEXT_SOFT_CC),
+                        number.length(),
+                        text.length(),
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    );
+                    TextView value = iconLine("", "mdi:water-thermometer", 34, 30, color, 400, true);
+                    value.setText(text);
                     dewBox.addView(value);
-                    dewBox.addView(iconLine("Dew point", "mdi:water-opacity", 27, 22, TEXT, 300, true), lineGap());
-                    if (hum instanceof Number) dewBox.addView(
-                        iconLine(
-                            Math.round(((Number) hum).doubleValue()) + "% humidity",
-                            "mdi:water-percent",
-                            27,
-                            22,
-                            TEXT,
-                            300,
-                            true
-                        ),
-                        lineGap()
-                    );
+                    // Line 2: the humidity, starting under the number (past the icon).
+                    if (hum instanceof Number) {
+                        TextView humidity = cornerText(getContext(), 17, 400);
+                        humidity.setTextColor(TEXT_SOFT_CC);
+                        humidity.setText(Math.round(((Number) hum).doubleValue()) + "% humidity");
+                        humidity.setPadding((int) ref(30) + (int) ref(8), 0, 0, 0);
+                        dewBox.addView(humidity, gapBelow(4));
+                    }
                     dewBox.setVisibility(nightShown() ? GONE : VISIBLE);
                 }
             }
